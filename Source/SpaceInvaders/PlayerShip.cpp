@@ -10,6 +10,10 @@
 #include "Components/BoxComponent.h"
 #include "Camera/CameraActor.h"
 #include "Engine/Engine.h"
+#include "Math/UnrealMathUtility.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "UObject/ConstructorHelpers.h"
+
 
 // Sets default values
 APlayerShip::APlayerShip()
@@ -17,70 +21,49 @@ APlayerShip::APlayerShip()
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	
-	PlayerMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerMesh"));
-	SetRootComponent(PlayerMesh);
-	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
-	SpringArm->bDoCollisionTest = false;
-	SpringArm->SetUsingAbsoluteRotation(true);
+	BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerMesh"));
+	SetRootComponent(BaseMesh);
+	ConstructorHelpers::FObjectFinder<UStaticMesh> SpaceshipRef(TEXT("StaticMesh'/Game/Meshes/Spaceship/spaceship.spaceship'"));
+	BaseMesh->SetStaticMesh(SpaceshipRef.Object);
 
-	SpringArm->SetRelativeRotation(FRotator(-20.f, 0.f, 0.f));
+	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+	SpringArm->bDoCollisionTest = true;
+	//SpringArm->SetUsingAbsoluteRotation(true);
+	SpringArm->SetRelativeRotation(FRotator(-30.f, 0.f, 0.f));
 	SpringArm->TargetArmLength = 2000.f;
 	SpringArm->bEnableCameraLag = true;
-	SpringArm->CameraLagSpeed = 5.f;
-
-	SpringArm->SetupAttachment(PlayerMesh);
+	SpringArm->CameraLagSpeed = 15.f;
+	SpringArm->SetupAttachment(BaseMesh);
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->bUsePawnControlRotation = false;
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+	//float ZRot = UKismetMathLibrary::FindLookAtRotation(Camera->GetRelativeLocation(), GetActorLocation()).Pitch + 45;
+	Camera->SetRelativeRotation(FRotator(10.f, 0.f, 0.f));
 
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
-
 }
 
 
-static void InitializeDefaultPawnInputBinding()
-{
-	static bool bindingsAdded = false;
-
-	if (bindingsAdded == false)
-	{
-		bindingsAdded = true;
-
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("MoveX", EKeys::W, 1.f));
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("MoveX", EKeys::S, -1.f));
-
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("MoveY", EKeys::D, 1.f));
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("MoveY", EKeys::A, -1.f));
-
-		UPlayerInput::AddEngineDefinedActionMapping(FInputActionKeyMapping("Shoot", EKeys::SpaceBar));
-		UPlayerInput::AddEngineDefinedActionMapping(FInputActionKeyMapping("Reload", EKeys::R));
-
-	}
-
-}
-
-
-// Called when the game starts or when spawned
 void APlayerShip::BeginPlay()
 {
 	Super::BeginPlay();
-	InitLocation = PlayerMesh->GetComponentLocation();
+	InitialLocation = BaseMesh->GetComponentLocation();
 }
 
-// Called every frame
+
 void APlayerShip::Tick(float DeltaTime)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Speed"));
 	Super::Tick(DeltaTime);
 
 	InContact = false;
-	PlayerMesh->SetRelativeLocation(FVector(XValue, YValue, 0.f));
-	UE_LOG(LogTemp, Warning, TEXT("Speed"));
+	//BaseMesh->SetRelativeLocation(FVector(XValue, YValue, 0.f));
+	AddActorLocalOffset(OffsetVector);
+	//SpringArm->SetRelativeRotation(FRotator(-10.f, GetActorRotation().Yaw, GetActorRotation().Roll));
+	UE_LOG(LogTemp, Warning, TEXT("Speed: %s"), *OffsetVector.ToString());
 }
 
 
-// Called to bind functionality to input
 void APlayerShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	check(PlayerInputComponent != nullptr);
@@ -88,21 +71,60 @@ void APlayerShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	InitializeDefaultPawnInputBinding();
-	PlayerInputComponent->BindAxis("MoveX", this, &APlayerShip::MoveXAxis);
-	PlayerInputComponent->BindAxis("MoveY", this, &APlayerShip::MoveYAxis);
+	PlayerInputComponent->BindAxis("Forward", this, &APlayerShip::Forward);
+	PlayerInputComponent->BindAxis("Right", this, &APlayerShip::Right);
+
+	PlayerInputComponent->BindAxis("Pitch", this, &APlayerShip::Pitch);
+	PlayerInputComponent->BindAxis("Yaw", this, &APlayerShip::Yaw);
+
+	PlayerInputComponent->BindAction("Dash", EInputEvent::IE_Pressed, this, &APlayerShip::Dash);
 	PlayerInputComponent->BindAction("Shoot", EInputEvent::IE_Pressed, this, &APlayerShip::Shoot);
 	PlayerInputComponent->BindAction("Reload", EInputEvent::IE_Pressed, this, &APlayerShip::Reload);
-
 }
 
 
-void APlayerShip::ResetLocation() const {
+// Hardcode input mappings
+void APlayerShip::InitializeDefaultPawnInputBinding()
+{
+	static bool bindingsAdded = false;
 
+	if (bindingsAdded == false)
+	{
+		bindingsAdded = true;
+
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Forward", EKeys::W, 1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Forward", EKeys::S, -1.f));
+
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Right", EKeys::D, 1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Right", EKeys::A, -1.f));
+
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Pitch", EKeys::NumPadFive, 1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Pitch", EKeys::NumPadEight, -1.f));
+
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Yaw", EKeys::NumPadFour, 1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Yaw", EKeys::NumPadSix, -1.f));
+
+		UPlayerInput::AddEngineDefinedActionMapping(FInputActionKeyMapping("Shoot", EKeys::SpaceBar));
+		UPlayerInput::AddEngineDefinedActionMapping(FInputActionKeyMapping("Reload", EKeys::R));
+		UPlayerInput::AddEngineDefinedActionMapping(FInputActionKeyMapping("Dash", EKeys::LeftShift));
+	}
 }
 
 
 
-void APlayerShip::Shoot() {
+// -------------------------------------- CUSTOM FUNCTIONS -------------------------------------- //
+
+
+
+void APlayerShip::ResetLocation() 
+{
+	FHitResult* HitResult = new FHitResult();
+	SetActorLocation(FVector(0.0f), false, HitResult, ETeleportType::ResetPhysics);
+}
+
+
+void APlayerShip::Shoot() 
+{
 	if (Ammo > 0) {
 		Ammo--;
 		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Ammo : !"), FString::FromInt(Ammo)); 
@@ -114,24 +136,20 @@ void APlayerShip::Shoot() {
 		{
 			FVector Location = GetActorLocation();
 			//150cm ahead of actor the bullet will be spawn 
-			World->SpawnActor<AActor>(ActorToSpawn, Location + FVector(150.f, 0.f, 0.f), GetActorRotation());
+			World->SpawnActor<AActor>(BulletActorToSpawn, Location + FVector(150.f, 0.f, 0.f), GetActorRotation());
 			UGameplayStatics::PlaySound2D(World, ShootingSound, 1.f, 1.f, 0.f, 0);
-
 		}
 		if (Ammo == 0)
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 12.f, FColor::Red, FString::Printf(TEXT("No ammo Reload %d "), Ammo));
-
 		}
 	}
-
-
-
 	UE_LOG(LogTemp, Warning, TEXT("Shooting"));
-
 }
 
-void APlayerShip::Reload() {
+
+void APlayerShip::Reload() 
+{
 	Ammo = 30;
 	UWorld* NewWorld = GetWorld();
 	UGameplayStatics::PlaySound2D(NewWorld, ReloadingSound, 1.f, 1.f, 0.f, 0);
@@ -139,25 +157,46 @@ void APlayerShip::Reload() {
 }
 
 
-void APlayerShip::MoveXAxis(float Value) {
-	//XValue = Value;
-
-	if (!Value && Speed > 0.04) {
-		Speed -= 0.04;
+void APlayerShip::Forward(float Value) 
+{
+	if (!Value && OffsetVector.X > 0.04) 
+	{
+		//Air resistance
+		OffsetVector.X -= 0.04;
 	}
-	else {
-		Speed += Value / 10;
+	else if (Value > 0) {
+		OffsetVector.X += Value * SpeedMultiplier / 5;
 	}
-
-	UE_LOG(LogTemp, Warning, TEXT("Speed: %f"), Speed);
-	XValue += Speed;
-
-}
-void APlayerShip::MoveYAxis(float Value) {
-	YValue = Value;
+	else if (Value < 0) {
+		OffsetVector.X += Value * SpeedMultiplier / 10;
+	}
 }
 
-void APlayerShip::Dash() {
+
+void APlayerShip::Right(float Value) 
+{
+	FRotator NewRot = GetActorRotation();
+	NewRot.Yaw += Value;
+	SetActorRelativeRotation(NewRot);
+}
 
 
+void APlayerShip::Pitch(float Value)
+{
+
+}
+
+
+void APlayerShip::Yaw(float Value)
+{
+
+}
+
+
+void APlayerShip::Dash() 
+{
+	FVector CurrentLoc = GetActorLocation();
+	FVector NewLoc = CurrentLoc;
+	NewLoc.X += 2000;
+	FMath::VInterpTo(CurrentLoc, NewLoc, 0.001, 2);
 }

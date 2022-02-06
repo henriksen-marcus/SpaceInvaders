@@ -28,57 +28,54 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-
+	// ! CUSTOM ! Hardcode key mapping
+	static void InitializeDefaultPawnInputBinding();
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlayerMesh")
-		UStaticMeshComponent* PlayerMesh = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlayerMesh")
-		USpringArmComponent* SpringArm {
-		nullptr
-	};
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlayerMesh")
+	UPROPERTY(EditDefaultsOnly, Category = "PlayerMesh")
+		UStaticMeshComponent* BaseMesh = nullptr;
+
+	UPROPERTY(BlueprintReadOnly, Category = "CameraVariables")
+		USpringArmComponent* SpringArm {nullptr};
+
+	UPROPERTY(BlueprintReadOnly, Category = "CameraVariables")
 		UCameraComponent* Camera = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlayerMesh")
-		float Speed = 0.0f;
+	UPROPERTY(BlueprintReadWrite, Category = "EditableVariables")
+		float SpeedMultiplier = 1.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlayerMesh")
+	UPROPERTY(BlueprintReadWrite, Category = "EditableVariables")
 		int Ammo = 30;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlayerMesh")
+	UPROPERTY(BlueprintReadWrite, Category = "SoundVariables")
 		USoundBase* ShootingSound = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlayerMesh")
+	UPROPERTY(BlueprintReadWrite, Category = "SoundVariables")
 		USoundBase* ReloadingSound = nullptr;
 
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"));
-	TSubclassOf<AActor> ActorToSpawn;
+	TSubclassOf<AActor> BulletActorToSpawn;
 
-	void Reload();
-
-	void Shoot();
-
-
-
-
-	UFUNCTION(BlueprintCallable)
-		void ResetLocation() const;
 	bool InContact;
 
 private:
-	FVector InitLocation = FVector::ZeroVector;
 
+	FVector InitialLocation = FVector::ZeroVector;
 
-	void MoveXAxis(float Value);
-	void MoveYAxis(float Value);
+	// Player input
+	void Forward(float Value);
+	void Right(float Value);
+	void Pitch(float Value);
+	void Yaw(float Value);
 
 	void Dash();
-	float XValue = 0.f;
-	float YValue = 0.f;
+	void Shoot();
+	void Reload();
+	void ResetLocation();
+	
+	// Holds the amount the player is to be offset from their current location per tick
+	FVector OffsetVector = FVector(0.f);
+
 	float DashTimer = 0.f;
-
-
-
 };
