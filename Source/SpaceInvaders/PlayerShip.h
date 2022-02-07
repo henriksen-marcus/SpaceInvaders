@@ -33,16 +33,16 @@ public:
 
 public:
 
-	UPROPERTY(EditDefaultsOnly, Category = "PlayerMesh")
+	UPROPERTY(EditAnywhere, Category = "PlayerMesh")
 		UStaticMeshComponent* BaseMesh = nullptr;
 
-	UPROPERTY(BlueprintReadOnly, Category = "CameraVariables")
+	UPROPERTY(EditAnywhere, Category = "CameraVariables")
 		USpringArmComponent* SpringArm {nullptr};
 
-	UPROPERTY(BlueprintReadOnly, Category = "CameraVariables")
+	UPROPERTY(EditAnywhere, Category = "CameraVariables")
 		UCameraComponent* Camera = nullptr;
 
-	UPROPERTY(BlueprintReadWrite, Category = "EditableVariables")
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
 		float SpeedMultiplier = 1.f;
 
 	UPROPERTY(BlueprintReadWrite, Category = "EditableVariables")
@@ -65,7 +65,7 @@ private:
 
 	// Player input
 	void Forward(float Value);
-	void Right(float Value);
+	void Roll(float Value);
 	void Pitch(float Value);
 	void Yaw(float Value);
 
@@ -76,6 +76,12 @@ private:
 	
 	// Holds the amount the player is to be offset from their current location per tick
 	FVector OffsetVector = FVector(0.f);
-	float Force = 23600000.f;
-	float DashTimer = 0.f;
+	float Force;;
+	float DashTimer;
+
+
+public:
+
+	UPROPERTY()
+		USceneComponent* BingoBango;
 };

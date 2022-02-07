@@ -21,9 +21,13 @@ APlayerShip::APlayerShip()
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	
+	//BingoBango = CreateDefaultSubobject<USceneComponent>(TEXT("MY BINGO BANGo"));
+	//SetRootComponent(BingoBango);
+
 	BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerMesh"));
 	SetRootComponent(BaseMesh);
 	ConstructorHelpers::FObjectFinder<UStaticMesh> SpaceshipRef(TEXT("StaticMesh'/Game/Meshes/Spaceship/spaceship.spaceship'"));
+	//BaseMesh->SetupAttachment(GetRootComponent());
 
 	if (SpaceshipRef.Succeeded())
 	{
@@ -34,7 +38,6 @@ APlayerShip::APlayerShip()
 	}
 
 	BaseMesh->SetSimulatePhysics(true);
-	BaseMesh->SetMassScale(NAME_None, 1.f);
 
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
@@ -60,6 +63,8 @@ void APlayerShip::BeginPlay()
 {
 	Super::BeginPlay();
 	InitialLocation = BaseMesh->GetComponentLocation();
+	Force = BaseMesh->GetMass() * 9.80665f * 100;
+	UE_LOG(LogTemp, Warning, TEXT("Current Mass: %f"), BaseMesh->GetMass())
 }
 
 
@@ -71,6 +76,14 @@ void APlayerShip::Tick(float DeltaTime)
 	AddActorLocalOffset(OffsetVector);
 	//UE_LOG(LogTemp, Warning, TEXT("Speed: %s"), *OffsetVector.ToString());
 	BaseMesh->AddForce(FVector(0.f, 0.f, Force));
+
+	FRotator CurrentRot;
+	if (GetActorRotation().Roll < 0)
+	{
+
+	}
+
+	
 }
 
 
@@ -82,7 +95,7 @@ void APlayerShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
 	InitializeDefaultPawnInputBinding();
 	PlayerInputComponent->BindAxis("Forward", this, &APlayerShip::Forward);
-	PlayerInputComponent->BindAxis("Right", this, &APlayerShip::Right);
+	PlayerInputComponent->BindAxis("Roll", this, &APlayerShip::Roll);
 
 	PlayerInputComponent->BindAxis("Pitch", this, &APlayerShip::Pitch);
 	PlayerInputComponent->BindAxis("Yaw", this, &APlayerShip::Yaw);
@@ -102,14 +115,14 @@ void APlayerShip::InitializeDefaultPawnInputBinding()
 	{
 		bindingsAdded = true;
 
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Forward", EKeys::W, 1.f));
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Forward", EKeys::S, -1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Pitch", EKeys::W, 1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Pitch", EKeys::S, -1.f));
 
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Right", EKeys::D, 1.f));
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Right", EKeys::A, -1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Roll", EKeys::A, 1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Roll", EKeys::D, -1.f));
 
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Pitch", EKeys::NumPadFive, 1.f));
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Pitch", EKeys::NumPadEight, -1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Forward", EKeys::NumPadFive, -1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Forward", EKeys::NumPadEight, 1.f));
 
 		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Yaw", EKeys::NumPadFour, 1.f));
 		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Yaw", EKeys::NumPadSix, -1.f));
@@ -169,42 +182,41 @@ void APlayerShip::Reload()
 
 void APlayerShip::Forward(float Value) 
 {
-	
-	BaseMesh->AddForce(GetActorForwardVector() * Value * 50000000);
-	
-	//if (!Value && OffsetVector.X > 0.04) 
-	//{
-	//	//Air resistance
-	//	OffsetVector.X -= 0.04;
-	//}
-	//else if (Value > 0) {
-	//	OffsetVector.X += Value * SpeedMultiplier / 5;
-	//}
-	//else if (Value < 0) {
-	//	OffsetVector.X += Value * SpeedMultiplier / 10;
-	//}
+	if (Value != 0) {
+		BaseMesh->AddForce(GetActorForwardVector() * Value * 50000000);
+	}
 }
 
 
-void APlayerShip::Right(float Value) 
+void APlayerShip::Roll(float Value) 
 {
-	FRotator NewRot = GetActorRotation();
+	/*FRotator NewRot = GetActorRotation();
 	NewRot.Yaw += Value;
-	SetActorRelativeRotation(NewRot);
+	SetActorRelativeRotation(NewRot);*/
+	if (Value != 0) {
+
+		BaseMesh->AddTorqueInRadians(FVector(10000000000.f * Value, 0.f, 0.f));
+		UE_LOG(LogTemp, Warning, TEXT("Rolling"))
+	}
 }
 
 
 void APlayerShip::Pitch(float Value)
 {
-	Force += 1000 * Value;
-	
-	//UE_LOG(LogTemp, Warning, TEXT("Force Amount: %f"), Force)
+	if (Value != 0) {
+		BaseMesh->AddTorqueInRadians(FVector(0.f, 10000000000.f * Value, 0.f));
+		UE_LOG(LogTemp, Warning, TEXT("Pitching"))
+	}
 }
 
 
 void APlayerShip::Yaw(float Value)
 {
-
+	if (Value != 0) {
+		
+		BaseMesh->AddTorqueInRadians(FVector(0.f, 0.f, 10000000000.f * Value));
+		UE_LOG(LogTemp, Warning, TEXT("Yawing"))
+	}
 }
 
 
