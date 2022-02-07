@@ -24,16 +24,27 @@ APlayerShip::APlayerShip()
 	BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerMesh"));
 	SetRootComponent(BaseMesh);
 	ConstructorHelpers::FObjectFinder<UStaticMesh> SpaceshipRef(TEXT("StaticMesh'/Game/Meshes/Spaceship/spaceship.spaceship'"));
-	BaseMesh->SetStaticMesh(SpaceshipRef.Object);
+
+	if (SpaceshipRef.Succeeded())
+	{
+		BaseMesh->SetStaticMesh(SpaceshipRef.Object);
+	}
+	else {
+		GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Red, FString::Printf(TEXT("Spaceship mesh could not be found.")));
+	}
+
+	BaseMesh->SetSimulatePhysics(true);
+	BaseMesh->SetMassScale(NAME_None, 1.f);
+
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->bDoCollisionTest = true;
-	//SpringArm->SetUsingAbsoluteRotation(true);
 	SpringArm->SetRelativeRotation(FRotator(-30.f, 0.f, 0.f));
 	SpringArm->TargetArmLength = 2000.f;
-	SpringArm->bEnableCameraLag = true;
-	SpringArm->CameraLagSpeed = 15.f;
-	SpringArm->SetupAttachment(BaseMesh);
+	SpringArm->bEnableCameraLag = false;
+	SpringArm->CameraLagSpeed = 10.f; // Lower = More delay
+	SpringArm->SetupAttachment(GetRootComponent());
+
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->bUsePawnControlRotation = false;
@@ -56,11 +67,10 @@ void APlayerShip::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	InContact = false;
-	//BaseMesh->SetRelativeLocation(FVector(XValue, YValue, 0.f));
+	//InContact = false;
 	AddActorLocalOffset(OffsetVector);
-	//SpringArm->SetRelativeRotation(FRotator(-10.f, GetActorRotation().Yaw, GetActorRotation().Roll));
-	UE_LOG(LogTemp, Warning, TEXT("Speed: %s"), *OffsetVector.ToString());
+	//UE_LOG(LogTemp, Warning, TEXT("Speed: %s"), *OffsetVector.ToString());
+	BaseMesh->AddForce(FVector(0.f, 0.f, Force));
 }
 
 
@@ -159,17 +169,20 @@ void APlayerShip::Reload()
 
 void APlayerShip::Forward(float Value) 
 {
-	if (!Value && OffsetVector.X > 0.04) 
-	{
-		//Air resistance
-		OffsetVector.X -= 0.04;
-	}
-	else if (Value > 0) {
-		OffsetVector.X += Value * SpeedMultiplier / 5;
-	}
-	else if (Value < 0) {
-		OffsetVector.X += Value * SpeedMultiplier / 10;
-	}
+	
+	BaseMesh->AddForce(GetActorForwardVector() * Value * 50000000);
+	
+	//if (!Value && OffsetVector.X > 0.04) 
+	//{
+	//	//Air resistance
+	//	OffsetVector.X -= 0.04;
+	//}
+	//else if (Value > 0) {
+	//	OffsetVector.X += Value * SpeedMultiplier / 5;
+	//}
+	//else if (Value < 0) {
+	//	OffsetVector.X += Value * SpeedMultiplier / 10;
+	//}
 }
 
 
@@ -183,7 +196,9 @@ void APlayerShip::Right(float Value)
 
 void APlayerShip::Pitch(float Value)
 {
-
+	Force += 1000 * Value;
+	
+	//UE_LOG(LogTemp, Warning, TEXT("Force Amount: %f"), Force)
 }
 
 
@@ -195,8 +210,9 @@ void APlayerShip::Yaw(float Value)
 
 void APlayerShip::Dash() 
 {
-	FVector CurrentLoc = GetActorLocation();
+	BaseMesh->AddImpulse(GetActorForwardVector() * 200000000.f);
+	/*FVector CurrentLoc = GetActorLocation();
 	FVector NewLoc = CurrentLoc;
 	NewLoc.X += 2000;
-	FMath::VInterpTo(CurrentLoc, NewLoc, 0.001, 2);
+	FMath::VInterpTo(CurrentLoc, NewLoc, 0.001, 2);*/
 }

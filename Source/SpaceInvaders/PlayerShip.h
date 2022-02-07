@@ -76,6 +76,6 @@ private:
 	
 	// Holds the amount the player is to be offset from their current location per tick
 	FVector OffsetVector = FVector(0.f);
-
+	float Force = 23600000.f;
 	float DashTimer = 0.f;
 };
