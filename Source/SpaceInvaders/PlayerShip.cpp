@@ -46,7 +46,7 @@ APlayerShip::APlayerShip()
 	SpringArm->bDoCollisionTest = true;
 	SpringArm->SetRelativeRotation(FRotator(-30.f, 0.f, 0.f));
 	SpringArm->SetUsingAbsoluteRotation(true);
-	SpringArm->TargetArmLength = 2000.f;
+	SpringArm->TargetArmLength = 1500.f;
 	SpringArm->bEnableCameraLag = true;
 	SpringArm->CameraLagSpeed = 10.f; // Lower = More delay
 	SpringArm->SetupAttachment(GetRootComponent());
@@ -89,10 +89,21 @@ void APlayerShip::Tick(float DeltaTime)
 	FRotator SpringArmRotation = SpringArm->GetRelativeRotation();
 	SpringArmRotation.Yaw = FMath::FInterpTo(SpringArmRotation.Yaw, NextYawPosition, DeltaTime, 20.f);
 	SpringArmRotation.Yaw = FMath::Clamp(SpringArmRotation.Yaw, GetActorRotation().Yaw - 20.f, GetActorRotation().Yaw + 20.f);
-	//UE_LOG(LogTemp, Warning, TEXT("Next Yaw: %f"), NextYawPosition)
-	//UE_LOG(LogTemp,Warning,TEXT("Current Yaw: %f"), SpringArmRotation.Yaw)
-	SpringArm->SetRelativeRotation(SpringArmRotation);
-	UE_LOG(LogTemp, Warning, TEXT("Loc: %s"), *MyArrow->GetComponentLocation().ToString())
+	UE_LOG(LogTemp, Warning, TEXT("Next Yaw: %f"), NextYawPosition)
+	UE_LOG(LogTemp, Warning, TEXT("Current Yaw: %f"), SpringArmRotation.Yaw)
+
+	FRotator test = FMath::RInterpTo(SpringArm->GetComponentRotation(), GetActorRotation(), DeltaTime, 20.f);
+	test.Pitch = -45.f;
+	SpringArm->SetWorldRotation(test);
+
+	
+
+
+	//SpringArm->SetRelativeRotation(SpringArmRotation);
+
+
+
+	//UE_LOG(LogTemp, Warning, TEXT("Loc: %s"), *MyArrow->GetComponentLocation().ToString())
 }
 
 
@@ -106,12 +117,13 @@ void APlayerShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
 	PlayerInputComponent->BindAxis("Roll", this, &APlayerShip::Roll);
 	PlayerInputComponent->BindAxis("Pitch", this, &APlayerShip::Pitch);
-	PlayerInputComponent->BindAxis("Yaw", this, &APlayerShip::Yaw);
 
+	PlayerInputComponent->BindAxis("CameraPitch", this, &APlayerShip::CameraPitch);
+	PlayerInputComponent->BindAxis("Yaw", this, &APlayerShip::Yaw);
+	
 	PlayerInputComponent->BindAxis("Shoot", this, &APlayerShip::Shoot);
 
 	PlayerInputComponent->BindAction("Dash", EInputEvent::IE_Pressed, this, &APlayerShip::Dash);
-	//PlayerInputComponent->BindAction("Shoot", EInputEvent::IE_Pressed, this, &APlayerShip::Shoot);
 	PlayerInputComponent->BindAction("Reload", EInputEvent::IE_Pressed, this, &APlayerShip::Reload);
 }
 
@@ -131,6 +143,7 @@ void APlayerShip::InitializeDefaultPawnInputBinding()
 		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Roll", EKeys::A, 1.f));
 		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Roll", EKeys::D, -1.f));
 
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("CameraPitch", EKeys::MouseY, 1.f));
 		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Yaw", EKeys::MouseX, 1.f));
 
 		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Shoot", EKeys::SpaceBar, 1.f));
@@ -215,9 +228,19 @@ void APlayerShip::Roll(float Value)
 }
 
 
+void APlayerShip::CameraPitch(float Value)
+{
+	NextYawPosition = FMath::FInterpTo(SpringArm->GetRelativeRotation().Pitch, GetActorRotation().Yaw + Value * 40.f, GetWorld()->GetDeltaSeconds(), 1.f);
+}
+
 void APlayerShip::Yaw(float Value)
 {
-	NextYawPosition = FMath::FInterpTo(GetActorRotation().Yaw, GetActorRotation().Yaw + Value * 40.f, GetWorld()->GetDeltaSeconds(), 1.f);
+	//NextYawPosition = GetActorRotation().Yaw + Value * 5.f;
+	FRotator CurRot = GetActorRotation();
+	FRotator NextRot = FRotator(0); 
+	NextRot.Yaw = CurRot.Yaw + 40.f * Value;
+	NextYawPosition = FMath::FInterpTo(CurRot.Yaw, NextRot.Yaw, GetWorld()->GetDeltaSeconds(), 1.f);
+	//NextYawPosition = GetActorRotation().Yaw + Value;
 }
 
 

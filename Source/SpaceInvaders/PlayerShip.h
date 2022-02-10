@@ -68,6 +68,8 @@ private:
 	// Player input
 	void Roll(float Value);
 	void Pitch(float Value);
+
+	void CameraPitch(float Value);
 	void Yaw(float Value);
 
 	void Dash();
@@ -88,4 +90,7 @@ private:
 	float SpeedBoost;
 	float DashTimer;
 	float ShootTimer{};
+
+	//mathias sitt personal space ;)
+	float CurrentYaw;
 };
