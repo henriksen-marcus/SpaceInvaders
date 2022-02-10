@@ -26,28 +26,26 @@ public:
 
 private:
 
-	UPROPERTY(EditAnywhere, Category = "bulletThings")
-		UStaticMesh* BaseMesh;
+	UPROPERTY(EditAnywhere, Category = "CustomVars")
+	UStaticMeshComponent* BaseMesh;
 
-	UPROPERTY(EditAnywhere, Category = "bulletThings")
-		float Speed = 1000.f;
+	UPROPERTY(EditAnywhere, Category = "CustomVars")
+	float Speed = 5000.f;
 
-	UPROPERTY(EditAnywhere, Category = "bulletThings")
-		float TimeBeforeDestroy = 5.f;
+	UPROPERTY(EditAnywhere, Category = "CustomVars")
+	float TimeBeforeDestroy = 20.f;
 
-	UPROPERTY(EditAnywhere, Category = "bulletThings")
-		float TimeLived = 0.f;
+	UPROPERTY(EditAnywhere, Category = "CustomVars")
+	float TimeLived = 0.f;
 
-	UPROPERTY(EditAnywhere, Category = "bulletThings")
-		UParticleSystem* BulletFireFX = nullptr;
+	UPROPERTY(EditAnywhere, Category = "CustomVars")
+	UParticleSystem* BulletFireFX = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "bulletThings")
-		USoundBase* BulletFireSound = nullptr;
-
-	//int score;
+	UPROPERTY(EditAnywhere, Category = "CustomVars")
+	USoundBase* BulletFireSound = nullptr;
 
 	UFUNCTION()
-		void OnOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent,
-			int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void OnOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent,
+	int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 };

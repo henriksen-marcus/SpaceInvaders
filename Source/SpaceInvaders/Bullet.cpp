@@ -13,10 +13,16 @@ ABullet::ABullet()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	BaseMesh = CreateDefaultSubobject<UStaticMesh>(TEXT("BaseMesh"));
+	BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BaseMesh"));
 
-	RootComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
-	Cast<UShapeComponent>(RootComponent)->OnComponentBeginOverlap.AddDynamic(this, &ABullet::OnOverlap);
+	ConstructorHelpers::FObjectFinder<UStaticMesh>BulletRef(TEXT("StaticMesh'/Game/Meshes/Bullet/BulletMesh.BulletMesh'"));
+
+	BaseMesh->SetStaticMesh(BulletRef.Object);
+	BaseMesh->SetRelativeScale3D(FVector(5.f, 5.f, 5.f));
+	BaseMesh->SetupAttachment(GetRootComponent());
+
+	//RootComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
+	//Cast<USphereComponent>(RootComponent)->OnComponentBeginOverlap.AddDynamic(this, &ABullet::OnOverlap);
 }
 
 // Called when the game starts or when spawned
@@ -46,12 +52,15 @@ void ABullet::Tick(float DeltaTime)
 // ------------------------------ CUSTOM FUNCTIONS --------------------------- //
 
 
-void ABullet::OnOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent,
-	int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult) {
+void ABullet::OnOverlap(
+	UPrimitiveComponent* OverlappedComponent, 
+	AActor* OtherActor, 
+	UPrimitiveComponent* OtherComponent, 
+	int32 OtherbodyIndex, 
+	bool bFromSweep, 
+	const FHitResult& SweepResult) 
+{
 
-	UE_LOG(LogTemp, Warning, TEXT(" Overlapped"));
-	// if it hits enemy destroy enemy and this actor 
-
-
+	UE_LOG(LogTemp, Warning, TEXT("Overlapped with %s"), OtherComponent);
 }
 

@@ -13,6 +13,7 @@
 #include "Math/UnrealMathUtility.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Components/TimelineComponent.h"
 
 
 // Sets default values
@@ -20,14 +21,14 @@ APlayerShip::APlayerShip()
 {
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	
-	//BingoBango = CreateDefaultSubobject<USceneComponent>(TEXT("MY BINGO BANGo"));
-	//SetRootComponent(BingoBango);
 
+	MyArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("ArrowSpawnPoint"));
+	MyArrow->SetupAttachment(GetRootComponent());
+	MyArrow->SetRelativeLocation(FVector(500.f, 0.f, -160.f));
+
+	// Base Mesh
 	BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerMesh"));
-	SetRootComponent(BaseMesh);
 	ConstructorHelpers::FObjectFinder<UStaticMesh> SpaceshipRef(TEXT("StaticMesh'/Game/Meshes/Spaceship/spaceship.spaceship'"));
-	//BaseMesh->SetupAttachment(GetRootComponent());
 
 	if (SpaceshipRef.Succeeded())
 	{
@@ -36,25 +37,31 @@ APlayerShip::APlayerShip()
 	else {
 		GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Red, FString::Printf(TEXT("Spaceship mesh could not be found.")));
 	}
+	
+	BaseMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
+	SetRootComponent(BaseMesh);
 
-	BaseMesh->SetSimulatePhysics(true);
-
-
+	// Spring Arm
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->bDoCollisionTest = true;
 	SpringArm->SetRelativeRotation(FRotator(-30.f, 0.f, 0.f));
+	SpringArm->SetUsingAbsoluteRotation(true);
 	SpringArm->TargetArmLength = 2000.f;
-	SpringArm->bEnableCameraLag = false;
+	SpringArm->bEnableCameraLag = true;
 	SpringArm->CameraLagSpeed = 10.f; // Lower = More delay
 	SpringArm->SetupAttachment(GetRootComponent());
 
-
+	// Camera
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->bUsePawnControlRotation = false;
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
-	//float ZRot = UKismetMathLibrary::FindLookAtRotation(Camera->GetRelativeLocation(), GetActorLocation()).Pitch + 45;
 	Camera->SetRelativeRotation(FRotator(10.f, 0.f, 0.f));
+	//float ZRot = UKismetMathLibrary::FindLookAtRotation(Camera->GetRelativeLocation(), GetActorLocation()).Pitch + 45;
 
+	SpeedBoost = 1.f;
+	DashTimer = 2.f;
+
+	// Possess player
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 }
 
@@ -62,28 +69,30 @@ APlayerShip::APlayerShip()
 void APlayerShip::BeginPlay()
 {
 	Super::BeginPlay();
-	InitialLocation = BaseMesh->GetComponentLocation();
-	Force = BaseMesh->GetMass() * 9.80665f * 100;
-	UE_LOG(LogTemp, Warning, TEXT("Current Mass: %f"), BaseMesh->GetMass())
+	InitialLocation = BaseMesh->GetComponentLocation();	
+	MyArrow->SetRelativeLocation(FVector(500.f, 0.f, -160.f));
 }
 
 
 void APlayerShip::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	ShootTimer += DeltaTime;
+	// Move ship
+	AddActorLocalOffset(LocalMove, true);
+	FVector Loc = GetActorLocation();
+	Loc.Z = InitialLocation.Z;
+	SetActorLocation(Loc);
 
-	//InContact = false;
-	AddActorLocalOffset(OffsetVector);
-	//UE_LOG(LogTemp, Warning, TEXT("Speed: %s"), *OffsetVector.ToString());
-	BaseMesh->AddForce(FVector(0.f, 0.f, Force));
-
-	FRotator CurrentRot;
-	if (GetActorRotation().Roll < 0)
-	{
-
-	}
-
-	
+	// Rotate ship
+	SetActorRotation(FRotator(NextPitchPosition, NextYawPosition, NextRollPosition));
+	FRotator SpringArmRotation = SpringArm->GetRelativeRotation();
+	SpringArmRotation.Yaw = FMath::FInterpTo(SpringArmRotation.Yaw, NextYawPosition, DeltaTime, 20.f);
+	SpringArmRotation.Yaw = FMath::Clamp(SpringArmRotation.Yaw, GetActorRotation().Yaw - 20.f, GetActorRotation().Yaw + 20.f);
+	//UE_LOG(LogTemp, Warning, TEXT("Next Yaw: %f"), NextYawPosition)
+	//UE_LOG(LogTemp,Warning,TEXT("Current Yaw: %f"), SpringArmRotation.Yaw)
+	SpringArm->SetRelativeRotation(SpringArmRotation);
+	UE_LOG(LogTemp, Warning, TEXT("Loc: %s"), *MyArrow->GetComponentLocation().ToString())
 }
 
 
@@ -94,14 +103,15 @@ void APlayerShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	InitializeDefaultPawnInputBinding();
-	PlayerInputComponent->BindAxis("Forward", this, &APlayerShip::Forward);
-	PlayerInputComponent->BindAxis("Roll", this, &APlayerShip::Roll);
 
+	PlayerInputComponent->BindAxis("Roll", this, &APlayerShip::Roll);
 	PlayerInputComponent->BindAxis("Pitch", this, &APlayerShip::Pitch);
 	PlayerInputComponent->BindAxis("Yaw", this, &APlayerShip::Yaw);
 
+	PlayerInputComponent->BindAxis("Shoot", this, &APlayerShip::Shoot);
+
 	PlayerInputComponent->BindAction("Dash", EInputEvent::IE_Pressed, this, &APlayerShip::Dash);
-	PlayerInputComponent->BindAction("Shoot", EInputEvent::IE_Pressed, this, &APlayerShip::Shoot);
+	//PlayerInputComponent->BindAction("Shoot", EInputEvent::IE_Pressed, this, &APlayerShip::Shoot);
 	PlayerInputComponent->BindAction("Reload", EInputEvent::IE_Pressed, this, &APlayerShip::Reload);
 }
 
@@ -121,13 +131,11 @@ void APlayerShip::InitializeDefaultPawnInputBinding()
 		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Roll", EKeys::A, 1.f));
 		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Roll", EKeys::D, -1.f));
 
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Forward", EKeys::NumPadFive, -1.f));
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Forward", EKeys::NumPadEight, 1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Yaw", EKeys::MouseX, 1.f));
 
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Yaw", EKeys::NumPadFour, 1.f));
-		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Yaw", EKeys::NumPadSix, -1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Shoot", EKeys::SpaceBar, 1.f));
 
-		UPlayerInput::AddEngineDefinedActionMapping(FInputActionKeyMapping("Shoot", EKeys::SpaceBar));
+		//UPlayerInput::AddEngineDefinedActionMapping(FInputActionKeyMapping("Shoot", EKeys::SpaceBar));
 		UPlayerInput::AddEngineDefinedActionMapping(FInputActionKeyMapping("Reload", EKeys::R));
 		UPlayerInput::AddEngineDefinedActionMapping(FInputActionKeyMapping("Dash", EKeys::LeftShift));
 	}
@@ -138,7 +146,6 @@ void APlayerShip::InitializeDefaultPawnInputBinding()
 // -------------------------------------- CUSTOM FUNCTIONS -------------------------------------- //
 
 
-
 void APlayerShip::ResetLocation() 
 {
 	FHitResult* HitResult = new FHitResult();
@@ -146,28 +153,29 @@ void APlayerShip::ResetLocation()
 }
 
 
-void APlayerShip::Shoot() 
+void APlayerShip::Shoot(float Value) 
 {
+	if (!Value || ShootTimer < 0.10f) { return; }
+	ShootTimer = 0.f;
 	if (Ammo > 0) {
 		Ammo--;
-		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Ammo : !"), FString::FromInt(Ammo)); 
-		GEngine->AddOnScreenDebugMessage(-1, 12.f, FColor::White, FString::Printf(TEXT("Ammo :  %d "), Ammo));
-
+		GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::White, FString::Printf(TEXT("Ammo :  %d "), Ammo));
 
 		UWorld* World = GetWorld();
 		if (World)
 		{
-			FVector Location = GetActorLocation();
-			//150cm ahead of actor the bullet will be spawn 
-			World->SpawnActor<AActor>(BulletActorToSpawn, Location + FVector(150.f, 0.f, 0.f), GetActorRotation());
+			// Bullet will spawn at the end of the barrel under the ship
+			World->SpawnActor<AActor>(BulletActorToSpawn, MyArrow->GetComponentLocation(), GetActorRotation());
 			UGameplayStatics::PlaySound2D(World, ShootingSound, 1.f, 1.f, 0.f, 0);
 		}
 		if (Ammo == 0)
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 12.f, FColor::Red, FString::Printf(TEXT("No ammo Reload %d "), Ammo));
+			GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Red, FString::Printf(TEXT("No ammo, reload")));
 		}
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Shooting"));
+	else {
+		GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Red, FString::Printf(TEXT("No ammo!")));
+	}
 }
 
 
@@ -180,51 +188,47 @@ void APlayerShip::Reload()
 }
 
 
-void APlayerShip::Forward(float Value) 
-{
-	if (Value != 0) {
-		BaseMesh->AddForce(GetActorForwardVector() * Value * 50000000);
-	}
-}
-
-
-void APlayerShip::Roll(float Value) 
-{
-	/*FRotator NewRot = GetActorRotation();
-	NewRot.Yaw += Value;
-	SetActorRelativeRotation(NewRot);*/
-	if (Value != 0) {
-
-		BaseMesh->AddTorqueInRadians(FVector(10000000000.f * Value, 0.f, 0.f));
-		UE_LOG(LogTemp, Warning, TEXT("Rolling"))
-	}
-}
-
-
 void APlayerShip::Pitch(float Value)
 {
-	if (Value != 0) {
-		BaseMesh->AddTorqueInRadians(FVector(0.f, 10000000000.f * Value, 0.f));
-		UE_LOG(LogTemp, Warning, TEXT("Pitching"))
-	}
+	// Determine if there is input
+	bPitchHasInput = !(Value == 0);
+	// If there is input, set rotation target to -25/25 based on input value, else set target to 0
+	float TargetPitch = bPitchHasInput ? Value > 0 ? -25.0f : 25.0f : 0.f;
+	// Interpolate rotation towards target
+	NextPitchPosition = FMath::FInterpTo(GetActorRotation().Pitch, TargetPitch, GetWorld()->GetDeltaSeconds(), 6.0f);
+	float TargetXSpeed = bPitchHasInput ? (Value * 30.f * SpeedBoost) : 0.f;
+	LocalMove.X = FMath::FInterpTo(LocalMove.X, TargetXSpeed, GetWorld()->GetDeltaSeconds(), 2.f);
+}
+
+
+void APlayerShip::Roll(float Value)
+{
+	// Determine if there is input
+	bRollHasInput = !(Value == 0);
+	// If there is input, set rotation target to -30/30 based on input value, else set target to 0
+	float TargetRoll = bRollHasInput ? Value > 0 ? -30.0f : 30.0f : 0.f;
+	// Interpolate rotation towards target
+	NextRollPosition = FMath::FInterpTo(GetActorRotation().Roll, TargetRoll, GetWorld()->GetDeltaSeconds(), 7.5f);
+
+	float TargetYSpeed = bRollHasInput ? (Value * -30.f) : 0.f;
+	LocalMove.Y = FMath::FInterpTo(LocalMove.Y, TargetYSpeed, GetWorld()->GetDeltaSeconds(), 2.f);
 }
 
 
 void APlayerShip::Yaw(float Value)
 {
-	if (Value != 0) {
-		
-		BaseMesh->AddTorqueInRadians(FVector(0.f, 0.f, 10000000000.f * Value));
-		UE_LOG(LogTemp, Warning, TEXT("Yawing"))
-	}
+	NextYawPosition = FMath::FInterpTo(GetActorRotation().Yaw, GetActorRotation().Yaw + Value * 40.f, GetWorld()->GetDeltaSeconds(), 1.f);
 }
 
 
 void APlayerShip::Dash() 
 {
-	BaseMesh->AddImpulse(GetActorForwardVector() * 200000000.f);
-	/*FVector CurrentLoc = GetActorLocation();
-	FVector NewLoc = CurrentLoc;
-	NewLoc.X += 2000;
-	FMath::VInterpTo(CurrentLoc, NewLoc, 0.001, 2);*/
+	SpeedBoost = 3.f;
+	FTimerHandle handle;
+	GetWorld()->GetTimerManager().SetTimer(handle, this, &APlayerShip::ResetDash, DashTimer, false);
+}
+
+void APlayerShip::ResetDash()
+{
+	SpeedBoost = 1.f;
 }

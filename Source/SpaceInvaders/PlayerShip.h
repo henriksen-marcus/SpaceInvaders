@@ -7,6 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/ArrowComponent.h"
 #include "PlayerShip.generated.h"
 
 UCLASS()
@@ -46,9 +47,9 @@ public:
 		float SpeedMultiplier = 1.f;
 
 	UPROPERTY(BlueprintReadWrite, Category = "EditableVariables")
-		int Ammo = 30;
+		int Ammo = 500;
 
-	UPROPERTY(BlueprintReadWrite, Category = "SoundVariables")
+	UPROPERTY(EditAnywhere, Category = "SoundVariables")
 		USoundBase* ShootingSound = nullptr;
 
 	UPROPERTY(BlueprintReadWrite, Category = "SoundVariables")
@@ -57,31 +58,34 @@ public:
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"));
 	TSubclassOf<AActor> BulletActorToSpawn;
 
-	bool InContact;
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+		UArrowComponent* MyArrow;
 
 private:
 
 	FVector InitialLocation = FVector::ZeroVector;
 
 	// Player input
-	void Forward(float Value);
 	void Roll(float Value);
 	void Pitch(float Value);
 	void Yaw(float Value);
 
 	void Dash();
-	void Shoot();
+	void ResetDash();
+	void Shoot(float Value);
 	void Reload();
 	void ResetLocation();
+
+	bool bPitchHasInput;
+	bool bRollHasInput;
+
+	float NextRollPosition;
+	float NextPitchPosition;
+	float NextYawPosition;
 	
-	// Holds the amount the player is to be offset from their current location per tick
-	FVector OffsetVector = FVector(0.f);
-	float Force;;
+	FVector LocalMove;
+	
+	float SpeedBoost;
 	float DashTimer;
-
-
-public:
-
-	UPROPERTY()
-		USceneComponent* BingoBango;
+	float ShootTimer{};
 };
