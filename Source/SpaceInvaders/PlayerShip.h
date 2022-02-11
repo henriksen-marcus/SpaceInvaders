@@ -93,4 +93,6 @@ private:
 
 	//mathias sitt personal space ;)
 	float CurrentYaw;
+	float InitialArmLength;
+	UCurveFloat* DistanceCurve;
 };

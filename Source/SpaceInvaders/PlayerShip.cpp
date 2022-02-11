@@ -41,12 +41,14 @@ APlayerShip::APlayerShip()
 	BaseMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 	SetRootComponent(BaseMesh);
 
+	InitialArmLength = 1500.f;
+
 	// Spring Arm
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->bDoCollisionTest = true;
 	SpringArm->SetRelativeRotation(FRotator(-30.f, 0.f, 0.f));
 	SpringArm->SetUsingAbsoluteRotation(true);
-	SpringArm->TargetArmLength = 1500.f;
+	SpringArm->TargetArmLength = InitialArmLength;
 	SpringArm->bEnableCameraLag = true;
 	SpringArm->CameraLagSpeed = 10.f; // Lower = More delay
 	SpringArm->SetupAttachment(GetRootComponent());
@@ -60,6 +62,9 @@ APlayerShip::APlayerShip()
 
 	SpeedBoost = 1.f;
 	DashTimer = 2.f;
+
+	ConstructorHelpers::FObjectFinder<UCurveFloat>CurveRef(TEXT("CurveFloat'/Game/Misc/SpringArmTargetArmLength.SpringArmTargetArmLength'"));
+	DistanceCurve = CurveRef.Object;
 
 	// Possess player
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
@@ -79,7 +84,7 @@ void APlayerShip::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	ShootTimer += DeltaTime;
 	// Move ship
-	AddActorLocalOffset(LocalMove, true);
+	AddActorLocalOffset(LocalMove);
 	FVector Loc = GetActorLocation();
 	Loc.Z = InitialLocation.Z;
 	SetActorLocation(Loc);
@@ -87,14 +92,10 @@ void APlayerShip::Tick(float DeltaTime)
 	// Rotate ship
 	SetActorRotation(FRotator(NextPitchPosition, NextYawPosition, NextRollPosition));
 	FRotator SpringArmRotation = SpringArm->GetRelativeRotation();
-	SpringArmRotation.Yaw = FMath::FInterpTo(SpringArmRotation.Yaw, NextYawPosition, DeltaTime, 20.f);
-	SpringArmRotation.Yaw = FMath::Clamp(SpringArmRotation.Yaw, GetActorRotation().Yaw - 20.f, GetActorRotation().Yaw + 20.f);
-	UE_LOG(LogTemp, Warning, TEXT("Next Yaw: %f"), NextYawPosition)
-	UE_LOG(LogTemp, Warning, TEXT("Current Yaw: %f"), SpringArmRotation.Yaw)
-
-	FRotator test = FMath::RInterpTo(SpringArm->GetComponentRotation(), GetActorRotation(), DeltaTime, 20.f);
-	test.Pitch = -45.f;
-	SpringArm->SetWorldRotation(test);
+	FRotator NewRot = FMath::RInterpTo(SpringArmRotation, GetActorRotation(), DeltaTime, 25.f);
+	NewRot.Pitch = SpringArmRotation.Pitch;
+	NewRot.Roll = 0;
+	SpringArm->SetWorldRotation(NewRot);
 
 	
 
@@ -230,17 +231,19 @@ void APlayerShip::Roll(float Value)
 
 void APlayerShip::CameraPitch(float Value)
 {
-	NextYawPosition = FMath::FInterpTo(SpringArm->GetRelativeRotation().Pitch, GetActorRotation().Yaw + Value * 40.f, GetWorld()->GetDeltaSeconds(), 1.f);
+	if (!Value) { return; }
+	FRotator CurrentRot = SpringArm->GetRelativeRotation();
+	float TargetPitch = FMath::Clamp(CurrentRot.Pitch + Value * 15.f, -70.f, 0.f);
+	CurrentRot.Pitch = FMath::FInterpTo(CurrentRot.Pitch, TargetPitch, GetWorld()->GetDeltaSeconds(), 10.f);
+	SpringArm->SetRelativeRotation(CurrentRot);
+
+	SpringArm->TargetArmLength = InitialArmLength * DistanceCurve->GetFloatValue(CurrentRot.Pitch);
+	UE_LOG(LogTemp, Warning, TEXT("Current Pitch: %f\nCurrent dist: %f\nCurrent curve val: %f"), CurrentRot.Pitch, SpringArm->TargetArmLength, DistanceCurve->GetFloatValue(CurrentRot.Pitch))
 }
 
 void APlayerShip::Yaw(float Value)
 {
-	//NextYawPosition = GetActorRotation().Yaw + Value * 5.f;
-	FRotator CurRot = GetActorRotation();
-	FRotator NextRot = FRotator(0); 
-	NextRot.Yaw = CurRot.Yaw + 40.f * Value;
-	NextYawPosition = FMath::FInterpTo(CurRot.Yaw, NextRot.Yaw, GetWorld()->GetDeltaSeconds(), 1.f);
-	//NextYawPosition = GetActorRotation().Yaw + Value;
+	NextYawPosition = GetActorRotation().Yaw + Value * GetWorld()->GetDeltaSeconds() * 50.f;
 }
 
 
