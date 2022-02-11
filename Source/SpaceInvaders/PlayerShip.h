@@ -58,8 +58,13 @@ public:
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"));
 	TSubclassOf<AActor> BulletActorToSpawn;
 
-	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EditableVariables")
 		UArrowComponent* MyArrow;
+
+	UPROPERTY(EditAnywhere, Category = "EditVars")
+	USceneComponent* MyObj;
+
+
 
 private:
 

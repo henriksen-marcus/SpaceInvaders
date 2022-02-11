@@ -19,10 +19,12 @@ ABullet::ABullet()
 
 	BaseMesh->SetStaticMesh(BulletRef.Object);
 	BaseMesh->SetRelativeScale3D(FVector(5.f, 5.f, 5.f));
-	BaseMesh->SetupAttachment(GetRootComponent());
-
+	SetRootComponent(BaseMesh);
 	//RootComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
 	//Cast<USphereComponent>(RootComponent)->OnComponentBeginOverlap.AddDynamic(this, &ABullet::OnOverlap);
+	
+	ProjComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("HelloBullet"));
+	BaseMesh->OnComponentBeginOverlap.AddDynamic(this, &ABullet::OnOverlap);
 }
 
 // Called when the game starts or when spawned
@@ -37,9 +39,9 @@ void ABullet::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
-	FVector NewLocation = GetActorLocation();
-	NewLocation += GetActorForwardVector() * Speed * DeltaTime;
-	SetActorLocation(NewLocation);
+	//FVector NewLocation = GetActorLocation();
+	//NewLocation += GetActorForwardVector() * Speed * DeltaTime;
+	//SetActorLocation(NewLocation);
 	TimeLived += DeltaTime;
 
 	if (TimeLived > TimeBeforeDestroy)
@@ -61,6 +63,7 @@ void ABullet::OnOverlap(
 	const FHitResult& SweepResult) 
 {
 
-	UE_LOG(LogTemp, Warning, TEXT("Overlapped with %s"), OtherComponent);
+	UE_LOG(LogTemp, Warning, TEXT("Overlapped with %s"), *(OtherActor)->GetFName().ToString());
+	this->Destroy();
 }
 

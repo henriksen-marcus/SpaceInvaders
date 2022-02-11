@@ -21,11 +21,6 @@ APlayerShip::APlayerShip()
 {
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
-	MyArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("ArrowSpawnPoint"));
-	MyArrow->SetupAttachment(GetRootComponent());
-	MyArrow->SetRelativeLocation(FVector(500.f, 0.f, -160.f));
-
 	// Base Mesh
 	BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerMesh"));
 	ConstructorHelpers::FObjectFinder<UStaticMesh> SpaceshipRef(TEXT("StaticMesh'/Game/Meshes/Spaceship/spaceship.spaceship'"));
@@ -37,9 +32,18 @@ APlayerShip::APlayerShip()
 	else {
 		GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Red, FString::Printf(TEXT("Spaceship mesh could not be found.")));
 	}
-	
+
 	BaseMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 	SetRootComponent(BaseMesh);
+
+	MyArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("ArrowSpawnPoint"));
+	MyArrow->SetupAttachment(GetRootComponent());
+	MyArrow->SetRelativeLocation(FVector(713.f, 0.f, -200.f));
+	MyObj = CreateDefaultSubobject<USceneComponent>(TEXT("Scenecomp"));
+	MyObj->SetRelativeLocation(FVector(0.f));
+
+	
+	
 
 	InitialArmLength = 1500.f;
 
@@ -65,6 +69,12 @@ APlayerShip::APlayerShip()
 
 	ConstructorHelpers::FObjectFinder<UCurveFloat>CurveRef(TEXT("CurveFloat'/Game/Misc/SpringArmTargetArmLength.SpringArmTargetArmLength'"));
 	DistanceCurve = CurveRef.Object;
+	
+	ConstructorHelpers::FObjectFinder<AActor> Bullet1(TEXT("Class'/Script/SpaceInvaders.Bullet'"));
+	BulletActorToSpawn = ABullet::StaticClass();
+	DistanceCurve = CurveRef.Object;
+
+
 
 	// Possess player
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
@@ -75,7 +85,7 @@ void APlayerShip::BeginPlay()
 {
 	Super::BeginPlay();
 	InitialLocation = BaseMesh->GetComponentLocation();	
-	MyArrow->SetRelativeLocation(FVector(500.f, 0.f, -160.f));
+	//MyArrow->SetRelativeLocation(FVector(500.f, 0.f, -160.f));
 }
 
 
@@ -169,7 +179,7 @@ void APlayerShip::ResetLocation()
 
 void APlayerShip::Shoot(float Value) 
 {
-	if (!Value || ShootTimer < 0.10f) { return; }
+	if (!Value || ShootTimer < 0.03f) { return; }
 	ShootTimer = 0.f;
 	if (Ammo > 0) {
 		Ammo--;

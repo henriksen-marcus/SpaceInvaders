@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Bullet.generated.h"
 
 UCLASS()
@@ -43,6 +44,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "CustomVars")
 	USoundBase* BulletFireSound = nullptr;
+
+	UPROPERTY(EditAnywhere)
+	class UProjectileMovementComponent* ProjComp;
 
 	UFUNCTION()
 	void OnOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent,
