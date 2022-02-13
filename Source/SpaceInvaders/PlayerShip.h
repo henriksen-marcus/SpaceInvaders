@@ -8,6 +8,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/ArrowComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "PlayerShip.generated.h"
 
 UCLASS()
@@ -30,45 +31,79 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	// ! CUSTOM ! Hardcode key mapping
-	static void InitializeDefaultPawnInputBinding();
+	static void InitializeDefaultPawnInputBinding();	
+
 
 public:
+	UFUNCTION()
+	FVector GetLoc();
 
+private:
 	UPROPERTY(EditAnywhere, Category = "PlayerMesh")
-		UStaticMeshComponent* BaseMesh = nullptr;
+	UStaticMeshComponent* BaseMesh = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "CameraVariables")
-		USpringArmComponent* SpringArm {nullptr};
+	USpringArmComponent* SpringArm;
 
 	UPROPERTY(EditAnywhere, Category = "CameraVariables")
-		UCameraComponent* Camera = nullptr;
+	UCameraComponent* Camera;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		float SpeedMultiplier = 1.f;
+	UArrowComponent* BulletSpawnPoint;
 
-	UPROPERTY(BlueprintReadWrite, Category = "EditableVariables")
-		int Ammo = 500;
+	UPROPERTY(VisibleAnywhere, Category = "TriggerCapsule")
+	UCapsuleComponent* TriggerCapsule;
 
 	UPROPERTY(EditAnywhere, Category = "SoundVariables")
-		USoundBase* ShootingSound = nullptr;
+	USoundBase* ReloadingSound;
 
-	UPROPERTY(BlueprintReadWrite, Category = "SoundVariables")
-		USoundBase* ReloadingSound = nullptr;
+	UPROPERTY(EditAnywhere, Category = "SoundVariables")
+	USoundBase* BulletCasingSound;
+
+	UPROPERTY(EditAnywhere, Category = "SoundVariables")
+	USoundBase* DashSound;
 
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"));
 	TSubclassOf<AActor> BulletActorToSpawn;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EditableVariables")
-		UArrowComponent* MyArrow;
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UCurveFloat* DistanceCurve;
 
-	UPROPERTY(EditAnywhere, Category = "EditVars")
-	USceneComponent* MyObj;
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	int MaxAmmo;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	float DashTimer;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	float MaxSpeedBoost;
+
+	UPROPERTY(VisibleAnywhere)
+	TArray<UArrowComponent*> ThrustLocations;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UParticleSystemComponent* ThrustFX1;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UParticleSystemComponent* ThrustFX2;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UParticleSystemComponent* ThrustFX3;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UParticleSystemComponent* ThrustFX4;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UParticleSystem* ThrustFX;
+	
+	UFUNCTION()
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex);
 
 
-
-private:
-
-	FVector InitialLocation = FVector::ZeroVector;
+	FVector InitialLocation;
 
 	// Player input
 	void Roll(float Value);
@@ -80,6 +115,8 @@ private:
 	void Dash();
 	void ResetDash();
 	void Shoot(float Value);
+	void InitReload();
+	void PlayBulletCasingSound();
 	void Reload();
 	void ResetLocation();
 
@@ -89,15 +126,13 @@ private:
 	float NextRollPosition;
 	float NextPitchPosition;
 	float NextYawPosition;
-	
+
 	FVector LocalMove;
-	
+
 	float SpeedBoost;
-	float DashTimer;
 	float ShootTimer{};
 
-	//mathias sitt personal space ;)
 	float CurrentYaw;
 	float InitialArmLength;
-	UCurveFloat* DistanceCurve;
+	int Ammo;
 };

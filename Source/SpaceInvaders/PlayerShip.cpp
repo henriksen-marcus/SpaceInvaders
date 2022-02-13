@@ -14,15 +14,16 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Components/TimelineComponent.h"
-
+#include "Particles/ParticleSystemComponent.h"
 
 // Sets default values
 APlayerShip::APlayerShip()
 {
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
 	// Base Mesh
-	BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerMesh"));
+	BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShipMesh"));
 	ConstructorHelpers::FObjectFinder<UStaticMesh> SpaceshipRef(TEXT("StaticMesh'/Game/Meshes/Spaceship/spaceship.spaceship'"));
 
 	if (SpaceshipRef.Succeeded())
@@ -30,22 +31,23 @@ APlayerShip::APlayerShip()
 		BaseMesh->SetStaticMesh(SpaceshipRef.Object);
 	}
 	else {
-		GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Red, FString::Printf(TEXT("Spaceship mesh could not be found.")));
+		UE_LOG(LogTemp, Warning, TEXT("Spaceship mesh could not be found."))
 	}
 
 	BaseMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 	SetRootComponent(BaseMesh);
 
-	MyArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("ArrowSpawnPoint"));
-	MyArrow->SetupAttachment(GetRootComponent());
-	MyArrow->SetRelativeLocation(FVector(713.f, 0.f, -200.f));
-	MyObj = CreateDefaultSubobject<USceneComponent>(TEXT("Scenecomp"));
-	MyObj->SetRelativeLocation(FVector(0.f));
-
-	
-	
-
+	MaxAmmo = 200;
+	Ammo = MaxAmmo;
+	DashTimer = 2.f;
+	MaxSpeedBoost = 3.f;
+	SpeedBoost = 1.f;
 	InitialArmLength = 1500.f;
+
+	//Bullet spawn point
+	BulletSpawnPoint = CreateDefaultSubobject<UArrowComponent>(TEXT("BulletSpawnPoint"));
+	BulletSpawnPoint->SetupAttachment(GetRootComponent());
+	BulletSpawnPoint->SetRelativeLocation(FVector(500.f, 0.f, -170.f));
 
 	// Spring Arm
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
@@ -64,35 +66,88 @@ APlayerShip::APlayerShip()
 	Camera->SetRelativeRotation(FRotator(10.f, 0.f, 0.f));
 	//float ZRot = UKismetMathLibrary::FindLookAtRotation(Camera->GetRelativeLocation(), GetActorLocation()).Pitch + 45;
 
-	SpeedBoost = 1.f;
-	DashTimer = 2.f;
+	ConstructorHelpers::FObjectFinder<UCurveFloat> CurveRef(TEXT("CurveFloat'/Game/Misc/SpringArmTargetArmLength.SpringArmTargetArmLength'"));
 
-	ConstructorHelpers::FObjectFinder<UCurveFloat>CurveRef(TEXT("CurveFloat'/Game/Misc/SpringArmTargetArmLength.SpringArmTargetArmLength'"));
-	DistanceCurve = CurveRef.Object;
-	
-	ConstructorHelpers::FObjectFinder<AActor> Bullet1(TEXT("Class'/Script/SpaceInvaders.Bullet'"));
-	BulletActorToSpawn = ABullet::StaticClass();
-	DistanceCurve = CurveRef.Object;
+	if (CurveRef.Succeeded())
+	{
+		DistanceCurve = CurveRef.Object;
+	}
+	else {
+		UE_LOG(LogTemp, Warning, TEXT("Distance Curve could not be found."))
+	}
 
-
+	TriggerCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("TriggerCapsule"));
+	TriggerCapsule->InitCapsuleSize(55.f, 96.f);
+	TriggerCapsule->SetCollisionProfileName(TEXT("Trigger"));
+	TriggerCapsule->SetupAttachment(GetRootComponent());
+	TriggerCapsule->OnComponentBeginOverlap.AddDynamic(this, &APlayerShip::OnOverlapBegin);
+	TriggerCapsule->OnComponentEndOverlap.AddDynamic(this, &APlayerShip::OnOverlapEnd);
 
 	// Possess player
-	AutoPossessPlayer = EAutoReceiveInput::Player0;
+	//AutoPossessPlayer = EAutoReceiveInput::Player0;
+
+	UArrowComponent* Thrust1 = CreateDefaultSubobject<UArrowComponent>(TEXT("Thrust1"));
+	UArrowComponent* Thrust2 = CreateDefaultSubobject<UArrowComponent>(TEXT("Thrust2"));
+	UArrowComponent* Thrust3 = CreateDefaultSubobject<UArrowComponent>(TEXT("Thrust3"));
+	UArrowComponent* Thrust4 = CreateDefaultSubobject<UArrowComponent>(TEXT("Thrust4"));
+
+	Thrust1->SetRelativeLocationAndRotation(FVector(354.f, -432.f, -23.f), FRotator(-95.f, 0.f, 0.f));
+	Thrust2->SetRelativeLocationAndRotation(FVector(354.f, 432.f, -23.f), FRotator(-95.f, 0.f, 0.f));
+	Thrust3->SetRelativeLocationAndRotation(FVector(-66.f, -416.f, 82.f), FRotator(-95.f, 0.f, 0.f));
+	Thrust4->SetRelativeLocationAndRotation(FVector(-66.f, 416.f, 82.f), FRotator(-95.f, 0.f, 0.f));
+
+	ThrustLocations.Reserve(4);
+	ThrustLocations.Add(Thrust1);
+	ThrustLocations.Add(Thrust2);
+	ThrustLocations.Add(Thrust3);
+	ThrustLocations.Add(Thrust4);
+
+	for (int i{}; i < ThrustLocations.Num(); i++) { ThrustLocations[i]->SetupAttachment(GetRootComponent()); }
+
+	ThrustFX1 = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("ThrustFX1"));
+	ThrustFX2 = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("ThrustFX2"));
+	ThrustFX3 = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("ThrustFX3"));
+	ThrustFX4 = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("ThrustFX4"));
+	
+	/**
+	* The reason I am doing it like this instead of using a TArray is that UE crashes when using
+	* UParticleSystemComponent->Activate() since the UParticleSystemComponent is NULL.
+	* Don't know if this is a bug, but this works at least
+	*/
+	ThrustFX1->SetupAttachment(ThrustLocations[0]);
+	ThrustFX2->SetupAttachment(ThrustLocations[1]);
+	ThrustFX3->SetupAttachment(ThrustLocations[2]);
+	ThrustFX4->SetupAttachment(ThrustLocations[3]);
+
+	ThrustFX1->bAutoActivate = false;
+	ThrustFX2->bAutoActivate = false;
+	ThrustFX3->bAutoActivate = false;
+	ThrustFX4->bAutoActivate = false;
 }
 
 
 void APlayerShip::BeginPlay()
 {
 	Super::BeginPlay();
-	InitialLocation = BaseMesh->GetComponentLocation();	
-	//MyArrow->SetRelativeLocation(FVector(500.f, 0.f, -160.f));
+	InitialLocation = GetActorLocation();
+
+	/** Apply effects to all subobjects, so you don't have to assign 4 values in blueprints */
+	if (ThrustFX)
+	{
+		ThrustFX1->SetTemplate(ThrustFX);
+		ThrustFX2->SetTemplate(ThrustFX);
+		ThrustFX3->SetTemplate(ThrustFX);
+		ThrustFX4->SetTemplate(ThrustFX);
+	}
 }
 
 
 void APlayerShip::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
 	ShootTimer += DeltaTime;
+
 	// Move ship
 	AddActorLocalOffset(LocalMove);
 	FVector Loc = GetActorLocation();
@@ -106,15 +161,6 @@ void APlayerShip::Tick(float DeltaTime)
 	NewRot.Pitch = SpringArmRotation.Pitch;
 	NewRot.Roll = 0;
 	SpringArm->SetWorldRotation(NewRot);
-
-	
-
-
-	//SpringArm->SetRelativeRotation(SpringArmRotation);
-
-
-
-	//UE_LOG(LogTemp, Warning, TEXT("Loc: %s"), *MyArrow->GetComponentLocation().ToString())
 }
 
 
@@ -135,7 +181,7 @@ void APlayerShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	PlayerInputComponent->BindAxis("Shoot", this, &APlayerShip::Shoot);
 
 	PlayerInputComponent->BindAction("Dash", EInputEvent::IE_Pressed, this, &APlayerShip::Dash);
-	PlayerInputComponent->BindAction("Reload", EInputEvent::IE_Pressed, this, &APlayerShip::Reload);
+	PlayerInputComponent->BindAction("Reload", EInputEvent::IE_Pressed, this, &APlayerShip::InitReload);
 }
 
 
@@ -158,6 +204,7 @@ void APlayerShip::InitializeDefaultPawnInputBinding()
 		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Yaw", EKeys::MouseX, 1.f));
 
 		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Shoot", EKeys::SpaceBar, 1.f));
+		UPlayerInput::AddEngineDefinedAxisMapping(FInputAxisKeyMapping("Shoot", EKeys::LeftMouseButton, 1.f));
 
 		//UPlayerInput::AddEngineDefinedActionMapping(FInputActionKeyMapping("Shoot", EKeys::SpaceBar));
 		UPlayerInput::AddEngineDefinedActionMapping(FInputActionKeyMapping("Reload", EKeys::R));
@@ -169,55 +216,13 @@ void APlayerShip::InitializeDefaultPawnInputBinding()
 
 // -------------------------------------- CUSTOM FUNCTIONS -------------------------------------- //
 
-
-void APlayerShip::ResetLocation() 
-{
-	FHitResult* HitResult = new FHitResult();
-	SetActorLocation(FVector(0.0f), false, HitResult, ETeleportType::ResetPhysics);
-}
-
-
-void APlayerShip::Shoot(float Value) 
-{
-	if (!Value || ShootTimer < 0.03f) { return; }
-	ShootTimer = 0.f;
-	if (Ammo > 0) {
-		Ammo--;
-		GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::White, FString::Printf(TEXT("Ammo :  %d "), Ammo));
-
-		UWorld* World = GetWorld();
-		if (World)
-		{
-			// Bullet will spawn at the end of the barrel under the ship
-			World->SpawnActor<AActor>(BulletActorToSpawn, MyArrow->GetComponentLocation(), GetActorRotation());
-			UGameplayStatics::PlaySound2D(World, ShootingSound, 1.f, 1.f, 0.f, 0);
-		}
-		if (Ammo == 0)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Red, FString::Printf(TEXT("No ammo, reload")));
-		}
-	}
-	else {
-		GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Red, FString::Printf(TEXT("No ammo!")));
-	}
-}
-
-
-void APlayerShip::Reload() 
-{
-	Ammo = 30;
-	UWorld* NewWorld = GetWorld();
-	UGameplayStatics::PlaySound2D(NewWorld, ReloadingSound, 1.f, 1.f, 0.f, 0);
-	GEngine->AddOnScreenDebugMessage(-1, 12.f, FColor::Green, FString::Printf(TEXT("Reloaded %d "), Ammo));
-}
-
-
 void APlayerShip::Pitch(float Value)
 {
 	// Determine if there is input
 	bPitchHasInput = !(Value == 0);
 	// If there is input, set rotation target to -25/25 based on input value, else set target to 0
-	float TargetPitch = bPitchHasInput ? Value > 0 ? -25.0f : 25.0f : 0.f;
+	float TargetPitch = bPitchHasInput ? Value > 0.f ? -25.0f : 25.0f : 0.f;
+
 	// Interpolate rotation towards target
 	NextPitchPosition = FMath::FInterpTo(GetActorRotation().Pitch, TargetPitch, GetWorld()->GetDeltaSeconds(), 6.0f);
 	float TargetXSpeed = bPitchHasInput ? (Value * 30.f * SpeedBoost) : 0.f;
@@ -245,10 +250,9 @@ void APlayerShip::CameraPitch(float Value)
 	FRotator CurrentRot = SpringArm->GetRelativeRotation();
 	float TargetPitch = FMath::Clamp(CurrentRot.Pitch + Value * 15.f, -70.f, 0.f);
 	CurrentRot.Pitch = FMath::FInterpTo(CurrentRot.Pitch, TargetPitch, GetWorld()->GetDeltaSeconds(), 10.f);
-	SpringArm->SetRelativeRotation(CurrentRot);
 
+	SpringArm->SetRelativeRotation(CurrentRot);
 	SpringArm->TargetArmLength = InitialArmLength * DistanceCurve->GetFloatValue(CurrentRot.Pitch);
-	UE_LOG(LogTemp, Warning, TEXT("Current Pitch: %f\nCurrent dist: %f\nCurrent curve val: %f"), CurrentRot.Pitch, SpringArm->TargetArmLength, DistanceCurve->GetFloatValue(CurrentRot.Pitch))
 }
 
 void APlayerShip::Yaw(float Value)
@@ -259,12 +263,104 @@ void APlayerShip::Yaw(float Value)
 
 void APlayerShip::Dash() 
 {
-	SpeedBoost = 3.f;
+	SpeedBoost = MaxSpeedBoost;
+
+	if (DashSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), DashSound, GetActorLocation());
+	}
+	if (ThrustFX)
+	{
+		// Old, keeping in case I need it
+		/*UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ThrustFX, Loc, Rot, FVector(0.4f));
+		UGameplayStatics::SpawnEmitterAttached(ThrustFX, ThrustLocations[i], FName(EName::NAME_None), Loc, Rot, FVector(0.5f));*/
+		ThrustFX1->ResetParticles();
+		ThrustFX2->ResetParticles();
+		ThrustFX3->ResetParticles();
+		ThrustFX4->ResetParticles();
+
+		ThrustFX1->Activate();
+		ThrustFX2->Activate();
+		ThrustFX3->Activate();
+		ThrustFX4->Activate();
+	}
+
 	FTimerHandle handle;
 	GetWorld()->GetTimerManager().SetTimer(handle, this, &APlayerShip::ResetDash, DashTimer, false);
 }
 
+
 void APlayerShip::ResetDash()
 {
 	SpeedBoost = 1.f;
+}
+
+
+void APlayerShip::ResetLocation()
+{
+	SetActorLocation(InitialLocation);
+}
+
+
+void APlayerShip::Shoot(float Value)
+{
+	if (!Value || ShootTimer < 0.08f) { return; }
+	ShootTimer = 0.f;
+	if (Ammo > 0) {
+		Ammo--;
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			FRotator Rot = GetActorRotation();
+			Rot.Pitch = 0;
+			// Bullet will spawn at the end of the barrel under the ship
+			World->SpawnActor<AActor>(BulletActorToSpawn, BulletSpawnPoint->GetComponentLocation(), Rot);
+			LocalMove.X -= 0.8f;
+		}
+	}
+	else {
+		GEngine->AddOnScreenDebugMessage(-1, 50.f, FColor::Red, FString::Printf(TEXT("No ammo, reload!")));
+	}
+}
+
+
+/** We need an init function to start the timer for the main function */
+void APlayerShip::InitReload()
+{
+	FTimerHandle handle, handle2;
+	GetWorld()->GetTimerManager().SetTimer(handle, this, &APlayerShip::Reload, 1.f, false);
+	GetWorld()->GetTimerManager().SetTimer(handle2, this, &APlayerShip::PlayBulletCasingSound, 0.57f, false);
+
+	UGameplayStatics::PlaySound2D(GetWorld(), ReloadingSound, 2.f);
+}
+
+
+void APlayerShip::PlayBulletCasingSound()
+{
+	UGameplayStatics::PlaySound2D(GetWorld(), BulletCasingSound, 0.4f);
+}
+
+
+void APlayerShip::Reload()
+{
+	GEngine->AddOnScreenDebugMessage(-1, 50.f, FColor::Green, FString::Printf(TEXT("Reloaded!")));
+	Ammo = 200;
+}
+
+
+void APlayerShip::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	//if (!OtherActor || OtherActor == this || !OtherComponent || OtherActor->IsA(ABullet::StaticClass())) { return; }
+	UE_LOG(LogTemp, Warning, TEXT("Taking damage!"))
+}
+
+
+void APlayerShip::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex)
+{
+}
+
+
+FVector APlayerShip::GetLoc()
+{
+	return GetActorLocation();
 }
