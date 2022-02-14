@@ -8,7 +8,8 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/ArrowComponent.h"
-#include "Components/CapsuleComponent.h"
+#include "Components/BoxComponent.h"
+#include "EnemyZlorp.h"
 #include "PlayerShip.generated.h"
 
 UCLASS()
@@ -39,8 +40,8 @@ public:
 	FVector GetLoc();
 
 private:
-	UPROPERTY(EditAnywhere, Category = "PlayerMesh")
-	UStaticMeshComponent* BaseMesh = nullptr;
+	UPROPERTY(EditAnywhere, Category = "PlayerMesh", meta = (AllowPrivateAccess = "true"))
+		UStaticMeshComponent* BaseMesh;
 
 	UPROPERTY(EditAnywhere, Category = "CameraVariables")
 	USpringArmComponent* SpringArm;
@@ -52,7 +53,7 @@ private:
 	UArrowComponent* BulletSpawnPoint;
 
 	UPROPERTY(VisibleAnywhere, Category = "TriggerCapsule")
-	UCapsuleComponent* TriggerCapsule;
+	UBoxComponent* CollisionBox;
 
 	UPROPERTY(EditAnywhere, Category = "SoundVariables")
 	USoundBase* ReloadingSound;
@@ -78,6 +79,12 @@ private:
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
 	float MaxSpeedBoost;
 
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	float MaxHealth;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UMaterialInterface* DamageMaterial;
+
 	UPROPERTY(VisibleAnywhere)
 	TArray<UArrowComponent*> ThrustLocations;
 
@@ -102,7 +109,6 @@ private:
 	UFUNCTION()
 	void OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex);
 
-
 	FVector InitialLocation;
 
 	// Player input
@@ -119,6 +125,8 @@ private:
 	void PlayBulletCasingSound();
 	void Reload();
 	void ResetLocation();
+	void TakeDamage(float DamageAmount);
+	void EndDamageEffect();
 
 	bool bPitchHasInput;
 	bool bRollHasInput;
@@ -134,5 +142,11 @@ private:
 
 	float CurrentYaw;
 	float InitialArmLength;
+	float Health;
 	int Ammo;
+
+	UMaterialInterface* InitialMaterial;
+
+	TArray<AActor*> Attackers;
+	TArray<float> Timers;
 };

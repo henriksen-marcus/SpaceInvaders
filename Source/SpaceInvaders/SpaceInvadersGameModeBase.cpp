@@ -23,7 +23,7 @@ void ASpaceInvadersGameModeBase::BeginPlay()
 		if (TempShip) 
 		{
 			PlayerLocation = TempShip->GetLoc();
-			for (int i{}; i < 1; i++) 
+			for (int i{}; i < 2; i++) 
 			{
 				float Theta = FMath::RandRange(0.f, 6.28318530718f);
 				FVector RandomCircle = FVector(0.f);
@@ -33,7 +33,6 @@ void ASpaceInvadersGameModeBase::BeginPlay()
 				RandomCircle.Z = 49.5f;
 				AEnemyZlorp* TempEnemy = GetWorld()->SpawnActor<AEnemyZlorp>(EnemyZlorpBP, RandomCircle, FRotator::ZeroRotator);
 				SpawnedZlorps.Add(TempEnemy);
-				UE_LOG(LogTemp, Warning, TEXT("Spawned a Zlorp, current amount: %d"), SpawnedZlorps.Num())
 			}
 		}
 	}
@@ -50,14 +49,17 @@ void ASpaceInvadersGameModeBase::Tick(float DeltaSeconds)
 		if (TempShip)
 		{
 			FVector Vec = TempShip->GetLoc();
-			if (SpawnedZlorps[0])
+
+			for (int i{}; i < SpawnedZlorps.Num(); i++) 
 			{
-				SpawnedZlorps[0]->TargetVector = Vec;
+				if (SpawnedZlorps[i])
+				{
+					SpawnedZlorps[i]->TargetVector = Vec;
+				}
+				else {
+					UE_LOG(LogTemp, Warning, TEXT("Not Valid! Number of arr elem: %d"), SpawnedZlorps.Num())
+				}
 			}
-			else {
-				UE_LOG(LogTemp, Warning, TEXT("Not Valid! Number of arr elem: %d"), SpawnedZlorps.Num())
-			}
-			
 		}
 	}
 	WaitTime += DeltaSeconds;

@@ -7,7 +7,6 @@
 #include "bullet.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
-#include "Components/BoxComponent.h"
 #include "Camera/CameraActor.h"
 #include "Engine/Engine.h"
 #include "Math/UnrealMathUtility.h"
@@ -43,6 +42,9 @@ APlayerShip::APlayerShip()
 	MaxSpeedBoost = 3.f;
 	SpeedBoost = 1.f;
 	InitialArmLength = 1500.f;
+	MaxHealth = 500.f;
+	Health = MaxHealth;
+	InitialMaterial = BaseMesh->GetMaterial(0);
 
 	//Bullet spawn point
 	BulletSpawnPoint = CreateDefaultSubobject<UArrowComponent>(TEXT("BulletSpawnPoint"));
@@ -51,12 +53,12 @@ APlayerShip::APlayerShip()
 
 	// Spring Arm
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-	SpringArm->bDoCollisionTest = true;
 	SpringArm->SetRelativeRotation(FRotator(-30.f, 0.f, 0.f));
 	SpringArm->SetUsingAbsoluteRotation(true);
 	SpringArm->TargetArmLength = InitialArmLength;
 	SpringArm->bEnableCameraLag = true;
 	SpringArm->CameraLagSpeed = 10.f; // Lower = More delay
+	SpringArm->bDoCollisionTest = false;
 	SpringArm->SetupAttachment(GetRootComponent());
 
 	// Camera
@@ -76,12 +78,14 @@ APlayerShip::APlayerShip()
 		UE_LOG(LogTemp, Warning, TEXT("Distance Curve could not be found."))
 	}
 
-	TriggerCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("TriggerCapsule"));
-	TriggerCapsule->InitCapsuleSize(55.f, 96.f);
-	TriggerCapsule->SetCollisionProfileName(TEXT("Trigger"));
-	TriggerCapsule->SetupAttachment(GetRootComponent());
-	TriggerCapsule->OnComponentBeginOverlap.AddDynamic(this, &APlayerShip::OnOverlapBegin);
-	TriggerCapsule->OnComponentEndOverlap.AddDynamic(this, &APlayerShip::OnOverlapEnd);
+	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
+	CollisionBox->InitBoxExtent(FVector(500.f, 500.f, 300.f));
+	CollisionBox->SetCollisionProfileName(TEXT("WhatTheFuck"));
+	CollisionBox->SetupAttachment(GetRootComponent());
+	CollisionBox->OnComponentBeginOverlap.AddDynamic(this, &APlayerShip::OnOverlapBegin);
+	CollisionBox->OnComponentEndOverlap.AddDynamic(this, &APlayerShip::OnOverlapEnd);
+
+	//BaseMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerShip::OnOverlapBegin);
 
 	// Possess player
 	//AutoPossessPlayer = EAutoReceiveInput::Player0;
@@ -123,6 +127,9 @@ APlayerShip::APlayerShip()
 	ThrustFX2->bAutoActivate = false;
 	ThrustFX3->bAutoActivate = false;
 	ThrustFX4->bAutoActivate = false;
+
+	ThrustFX1->SetRelativeScale3D(FVector(20.f));
+
 }
 
 
@@ -149,7 +156,7 @@ void APlayerShip::Tick(float DeltaTime)
 	ShootTimer += DeltaTime;
 
 	// Move ship
-	AddActorLocalOffset(LocalMove);
+	AddActorLocalOffset(LocalMove * DeltaTime * 200);
 	FVector Loc = GetActorLocation();
 	Loc.Z = InitialLocation.Z;
 	SetActorLocation(Loc);
@@ -161,6 +168,18 @@ void APlayerShip::Tick(float DeltaTime)
 	NewRot.Pitch = SpringArmRotation.Pitch;
 	NewRot.Roll = 0;
 	SpringArm->SetWorldRotation(NewRot);
+
+	for (int i{}; i < Timers.Num(); i++)
+	{
+		Timers[i] += DeltaTime;
+		if (Timers[i] >= 3.f)
+		{
+			//Timers.Remove(Timers[i]);
+			//Attackers.Remove(Attackers[i]);
+			Timers.RemoveAt(i);
+			Attackers.RemoveAt(i);
+		}
+	}
 }
 
 
@@ -301,10 +320,34 @@ void APlayerShip::ResetLocation()
 	SetActorLocation(InitialLocation);
 }
 
+void APlayerShip::TakeDamage(float DamageAmount)
+{
+	Health = FMath::Clamp(Health + DamageAmount, 0.f, MaxHealth);
+
+	if (DamageAmount < 0 && DamageMaterial)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Taking damage!"))
+		BaseMesh->SetMaterial(0, DamageMaterial);
+		FTimerHandle handle;
+		GetWorld()->GetTimerManager().SetTimer(handle, this, &APlayerShip::EndDamageEffect, 0.1f, false);
+	}
+
+	if (!Health)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("You have died!"))
+		//this->Destroy();
+	}
+}
+
+void APlayerShip::EndDamageEffect()
+{
+	BaseMesh->SetMaterial(0, InitialMaterial);
+}
+
 
 void APlayerShip::Shoot(float Value)
 {
-	if (!Value || ShootTimer < 0.08f) { return; }
+	if (!Value || ShootTimer < 0.01f) { return; }
 	ShootTimer = 0.f;
 	if (Ammo > 0) {
 		Ammo--;
@@ -350,8 +393,30 @@ void APlayerShip::Reload()
 
 void APlayerShip::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	//if (!OtherActor || OtherActor == this || !OtherComponent || OtherActor->IsA(ABullet::StaticClass())) { return; }
-	UE_LOG(LogTemp, Warning, TEXT("Taking damage!"))
+	if (!OtherActor || OtherActor == this || !OtherComponent || OtherActor->IsA(ABullet::StaticClass())) { return; }
+	
+
+
+	if (OtherActor->IsA(AEnemyZlorp::StaticClass()))
+	{
+		bool bIsOnCooldown = false;
+		for (int i{}; i < Attackers.Num(); i++)
+		{
+			if (Attackers[i] == OtherActor) {
+				bIsOnCooldown = true;
+				break;
+			}
+		}
+
+		if (!bIsOnCooldown)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("OH SHIT"))
+				UE_LOG(LogTemp, Warning, TEXT("Attackers: %d"), Attackers.Num())
+			TakeDamage(-50.f);
+			Attackers.Add(OtherActor);
+			Timers.Add(0.f);
+		}
+	}
 }
 
 
