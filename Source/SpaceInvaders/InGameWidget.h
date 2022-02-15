@@ -1,0 +1,33 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "Runtime/UMG/Public/UMG.h"
+#include "InGameWidget.generated.h"
+
+/**
+ * 
+ */
+UCLASS()
+class SPACEINVADERS_API UInGameWidget : public UUserWidget
+{
+	GENERATED_BODY()
+
+public:
+	void Update(int32 KillCount, int32 AmmoCount, float HealthAmount);
+
+protected:
+	virtual void NativeConstruct() override;
+
+	UPROPERTY(meta = (BindWidget))
+	UProgressBar* HealthBar;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* AmmoTxt;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* KillsTxt;
+
+};

@@ -33,18 +33,35 @@ public:
 	FVector TargetVector;
 
 	/** Returns the health of the Zlorp */
+	UFUNCTION()
 	float GetHealth();
 
 	/** Plusses ChangeAmount to the Zlorp's health, can be negative for damage */
+	UFUNCTION()
 	void AddHealth(float ChangeAmount);
 
-private:
 	UPROPERTY(EditAnywhere, Category = "ZlorpVariables")
-	float Health;
+		float Health;
+
+private:
+	
 
 	UPROPERTY(EditAnywhere, Category = "ZlorpVariables")
 	float ZlorpSpeed;
 
 	UPROPERTY(EditAnywhere, Category = "ZlorpVariables")
-	USoundBase* HitSound;
+	UParticleSystem* DeathFX;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UMaterialInterface* DamageMaterial;
+
+	UMaterialInterface* InitialMaterial0;
+	UMaterialInterface* InitialMaterial1;
+
+	float PrevSpeed;
+	float TargetSpeed;
+	float TargetOffset;
+	float Timer;
+
+	void EndDamageEffect();
 };

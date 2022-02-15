@@ -3,15 +3,17 @@
 
 #include "SpaceInvadersGameModeBase.h"
 #include "Kismet/GameplayStatics.h"
+//#include "SIGameState.h"
 
 
 ASpaceInvadersGameModeBase::ASpaceInvadersGameModeBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	bAllDead = false;
-	SpawnsRemaining = 20;
-	SpawnDistance = 4000.f;
+	SpawnDistance = 12000.f;
 	WaitTime = 0.f;
+	Kills = 0;
+	KillsToWin = 20;
+	MaxAllowedEnemies = 5;
 }
 
 void ASpaceInvadersGameModeBase::BeginPlay()
@@ -23,15 +25,9 @@ void ASpaceInvadersGameModeBase::BeginPlay()
 		if (TempShip) 
 		{
 			PlayerLocation = TempShip->GetLoc();
-			for (int i{}; i < 2; i++) 
+			for (int i{}; i < MaxAllowedEnemies; i++) 
 			{
-				float Theta = FMath::RandRange(0.f, 6.28318530718f);
-				FVector RandomCircle = FVector(0.f);
-				RandomCircle.X = SpawnDistance * FMath::Cos(Theta);
-				RandomCircle.Y = SpawnDistance * FMath::Sin(Theta);
-				RandomCircle += PlayerLocation;
-				RandomCircle.Z = 49.5f;
-				AEnemyZlorp* TempEnemy = GetWorld()->SpawnActor<AEnemyZlorp>(EnemyZlorpBP, RandomCircle, FRotator::ZeroRotator);
+				AEnemyZlorp* TempEnemy = GetWorld()->SpawnActor<AEnemyZlorp>(EnemyZlorpBP, GetRandomSpawnLocation(), FRotator::ZeroRotator);
 				SpawnedZlorps.Add(TempEnemy);
 			}
 		}
@@ -41,26 +37,58 @@ void ASpaceInvadersGameModeBase::BeginPlay()
 
 void ASpaceInvadersGameModeBase::Tick(float DeltaSeconds)
 {
-	if (WaitTime >= 1.f)
+	if (WaitTime >= 0.5f)
 	{
 		WaitTime = 0.f;
 		AActor* TempActor = UGameplayStatics::GetActorOfClass(GetWorld(), PlayerShipBP);
 		APlayerShip* TempShip = Cast<APlayerShip>(TempActor);
 		if (TempShip)
 		{
-			FVector Vec = TempShip->GetLoc();
+			PlayerLocation = TempShip->GetLoc();
 
 			for (int i{}; i < SpawnedZlorps.Num(); i++) 
 			{
 				if (SpawnedZlorps[i])
 				{
-					SpawnedZlorps[i]->TargetVector = Vec;
+					SpawnedZlorps[i]->TargetVector = PlayerLocation;
 				}
 				else {
 					UE_LOG(LogTemp, Warning, TEXT("Not Valid! Number of arr elem: %d"), SpawnedZlorps.Num())
 				}
 			}
 		}
+
+		if (SpawnedZlorps.Num() < MaxAllowedEnemies)
+		{
+			AEnemyZlorp* TempEnemy = GetWorld()->SpawnActor<AEnemyZlorp>(EnemyZlorpBP, GetRandomSpawnLocation(), FRotator::ZeroRotator);
+			SpawnedZlorps.Add(TempEnemy);
+		}
+		UE_LOG(LogTemp, Warning, TEXT("Zlorp: %d"), SpawnedZlorps.Num())
 	}
 	WaitTime += DeltaSeconds;
+}
+
+
+/** Use trigonometry to get a random point on a circle around the player */
+FVector ASpaceInvadersGameModeBase::GetRandomSpawnLocation()
+{
+	float Theta = FMath::RandRange(0.f, 6.28318530718f);
+	FVector RandomCircle = FVector::ZeroVector;
+	RandomCircle.X = SpawnDistance * FMath::Cos(Theta);
+	RandomCircle.Y = SpawnDistance * FMath::Sin(Theta);
+	RandomCircle += PlayerLocation;
+	RandomCircle.Z = 284.f; // Ground height + character height
+	return RandomCircle;
+}
+
+
+void ASpaceInvadersGameModeBase::AddKills()
+{
+	if (++Kills >= 20)
+	{
+		//Game win
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Kills: %d"), Kills)
+
+
 }

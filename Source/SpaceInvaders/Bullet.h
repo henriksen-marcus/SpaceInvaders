@@ -42,9 +42,6 @@ private:
 		UStaticMeshComponent* BaseMesh;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		float Speed = 2000.f;
-
-	UPROPERTY(EditAnywhere, Category = "EditableVariables")
 		float TimeBeforeDestroy = 20.f;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
@@ -75,8 +72,5 @@ private:
 	void Kill();
 
 	UFUNCTION()
-		void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-	UFUNCTION()
-		void OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex);
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 };

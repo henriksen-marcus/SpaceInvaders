@@ -36,15 +36,22 @@ APlayerShip::APlayerShip()
 	BaseMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 	SetRootComponent(BaseMesh);
 
-	MaxAmmo = 200;
+	BaseMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	BaseMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+	BaseMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerShip::OnOverlapBegin);
+
+	MaxAmmo = 40;
 	Ammo = MaxAmmo;
 	DashTimer = 2.f;
-	MaxSpeedBoost = 3.f;
+	MaxSpeedBoost = 4.f;
 	SpeedBoost = 1.f;
-	InitialArmLength = 1500.f;
+	InitialArmLength = 1000.f;
 	MaxHealth = 500.f;
 	Health = MaxHealth;
 	InitialMaterial = BaseMesh->GetMaterial(0);
+	bIsReloading = false;
+	bIsDashing = false;
+	EnemyCooldownTime = 1.f;
 
 	//Bullet spawn point
 	BulletSpawnPoint = CreateDefaultSubobject<UArrowComponent>(TEXT("BulletSpawnPoint"));
@@ -56,8 +63,8 @@ APlayerShip::APlayerShip()
 	SpringArm->SetRelativeRotation(FRotator(-30.f, 0.f, 0.f));
 	SpringArm->SetUsingAbsoluteRotation(true);
 	SpringArm->TargetArmLength = InitialArmLength;
-	SpringArm->bEnableCameraLag = true;
-	SpringArm->CameraLagSpeed = 10.f; // Lower = More delay
+	//SpringArm->bEnableCameraLag = true;
+	//SpringArm->CameraLagSpeed = 10.f; // Lower = More delay
 	SpringArm->bDoCollisionTest = false;
 	SpringArm->SetupAttachment(GetRootComponent());
 
@@ -66,7 +73,6 @@ APlayerShip::APlayerShip()
 	Camera->bUsePawnControlRotation = false;
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->SetRelativeRotation(FRotator(10.f, 0.f, 0.f));
-	//float ZRot = UKismetMathLibrary::FindLookAtRotation(Camera->GetRelativeLocation(), GetActorLocation()).Pitch + 45;
 
 	ConstructorHelpers::FObjectFinder<UCurveFloat> CurveRef(TEXT("CurveFloat'/Game/Misc/SpringArmTargetArmLength.SpringArmTargetArmLength'"));
 
@@ -77,18 +83,6 @@ APlayerShip::APlayerShip()
 	else {
 		UE_LOG(LogTemp, Warning, TEXT("Distance Curve could not be found."))
 	}
-
-	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
-	CollisionBox->InitBoxExtent(FVector(500.f, 500.f, 300.f));
-	CollisionBox->SetCollisionProfileName(TEXT("WhatTheFuck"));
-	CollisionBox->SetupAttachment(GetRootComponent());
-	CollisionBox->OnComponentBeginOverlap.AddDynamic(this, &APlayerShip::OnOverlapBegin);
-	CollisionBox->OnComponentEndOverlap.AddDynamic(this, &APlayerShip::OnOverlapEnd);
-
-	//BaseMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerShip::OnOverlapBegin);
-
-	// Possess player
-	//AutoPossessPlayer = EAutoReceiveInput::Player0;
 
 	UArrowComponent* Thrust1 = CreateDefaultSubobject<UArrowComponent>(TEXT("Thrust1"));
 	UArrowComponent* Thrust2 = CreateDefaultSubobject<UArrowComponent>(TEXT("Thrust2"));
@@ -127,9 +121,6 @@ APlayerShip::APlayerShip()
 	ThrustFX2->bAutoActivate = false;
 	ThrustFX3->bAutoActivate = false;
 	ThrustFX4->bAutoActivate = false;
-
-	ThrustFX1->SetRelativeScale3D(FVector(20.f));
-
 }
 
 
@@ -146,6 +137,11 @@ void APlayerShip::BeginPlay()
 		ThrustFX3->SetTemplate(ThrustFX);
 		ThrustFX4->SetTemplate(ThrustFX);
 	}
+	AHUDContainer* HUDContainer = Cast<AHUDContainer>(GetWorld()->GetFirstPlayerController()->GetHUD());
+	if (HUDContainer)
+	{
+		HUDContainer->UpdateIGWidget(20, 21, 200);
+	}
 }
 
 
@@ -154,28 +150,27 @@ void APlayerShip::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	ShootTimer += DeltaTime;
-
-	// Move ship
-	AddActorLocalOffset(LocalMove * DeltaTime * 200);
+	/** Ship movement */
+	AddActorLocalOffset(LocalMove * DeltaTime * 110.f, true);
+	
 	FVector Loc = GetActorLocation();
 	Loc.Z = InitialLocation.Z;
-	SetActorLocation(Loc);
-
-	// Rotate ship
+	SetActorLocation(Loc, true);
 	SetActorRotation(FRotator(NextPitchPosition, NextYawPosition, NextRollPosition));
+
+	/** Springarm rotation */
 	FRotator SpringArmRotation = SpringArm->GetRelativeRotation();
 	FRotator NewRot = FMath::RInterpTo(SpringArmRotation, GetActorRotation(), DeltaTime, 25.f);
 	NewRot.Pitch = SpringArmRotation.Pitch;
 	NewRot.Roll = 0;
 	SpringArm->SetWorldRotation(NewRot);
 
+	/** Timer system for enemies, see function OnOverlapBegin() */
 	for (int i{}; i < Timers.Num(); i++)
 	{
 		Timers[i] += DeltaTime;
 		if (Timers[i] >= 3.f)
 		{
-			//Timers.Remove(Timers[i]);
-			//Attackers.Remove(Attackers[i]);
 			Timers.RemoveAt(i);
 			Attackers.RemoveAt(i);
 		}
@@ -267,7 +262,7 @@ void APlayerShip::CameraPitch(float Value)
 {
 	if (!Value) { return; }
 	FRotator CurrentRot = SpringArm->GetRelativeRotation();
-	float TargetPitch = FMath::Clamp(CurrentRot.Pitch + Value * 15.f, -70.f, 0.f);
+	float TargetPitch = FMath::Clamp(CurrentRot.Pitch + Value * 15.f, -50.f, 0.f);
 	CurrentRot.Pitch = FMath::FInterpTo(CurrentRot.Pitch, TargetPitch, GetWorld()->GetDeltaSeconds(), 10.f);
 
 	SpringArm->SetRelativeRotation(CurrentRot);
@@ -282,11 +277,18 @@ void APlayerShip::Yaw(float Value)
 
 void APlayerShip::Dash() 
 {
+	if (bIsDashing) 
+	{
+		PlayErrorSound();
+		return;
+	}
+
 	SpeedBoost = MaxSpeedBoost;
+	bIsDashing = true;
 
 	if (DashSound)
 	{
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), DashSound, GetActorLocation());
+		UGameplayStatics::PlaySound2D(GetWorld(), DashSound);
 	}
 	if (ThrustFX)
 	{
@@ -312,6 +314,7 @@ void APlayerShip::Dash()
 void APlayerShip::ResetDash()
 {
 	SpeedBoost = 1.f;
+	bIsDashing = false;
 }
 
 
@@ -320,14 +323,16 @@ void APlayerShip::ResetLocation()
 	SetActorLocation(InitialLocation);
 }
 
-void APlayerShip::TakeDamage(float DamageAmount)
-{
-	Health = FMath::Clamp(Health + DamageAmount, 0.f, MaxHealth);
 
-	if (DamageAmount < 0 && DamageMaterial)
+void APlayerShip::AddHealth(float Amount)
+{
+	Health = FMath::Clamp(Health + Amount, 0.f, MaxHealth);
+
+	if (Amount < 0 && DamageMaterial && HitSound)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Taking damage!"))
+		UGameplayStatics::PlaySound2D(GetWorld(), HitSound, 0.7f);
 		BaseMesh->SetMaterial(0, DamageMaterial);
+
 		FTimerHandle handle;
 		GetWorld()->GetTimerManager().SetTimer(handle, this, &APlayerShip::EndDamageEffect, 0.1f, false);
 	}
@@ -339,15 +344,27 @@ void APlayerShip::TakeDamage(float DamageAmount)
 	}
 }
 
+
 void APlayerShip::EndDamageEffect()
 {
 	BaseMesh->SetMaterial(0, InitialMaterial);
 }
 
 
+void APlayerShip::PlayErrorSound()
+{
+	if (ErrorSound)
+	{
+		UGameplayStatics::PlaySound2D(GetWorld(), ErrorSound, 0.8f);
+		//TSubclassOf<UCameraShakeBase> Hey;
+		//UGameplayStatics::PlayWorldCameraShake(GetWorld(), Hey, FVector::ZeroVector, 0.f, 0.f);
+	}
+}
+
+
 void APlayerShip::Shoot(float Value)
 {
-	if (!Value || ShootTimer < 0.01f) { return; }
+	if (!Value || ShootTimer < 0.09f) { return; }
 	ShootTimer = 0.f;
 	if (Ammo > 0) {
 		Ammo--;
@@ -361,8 +378,9 @@ void APlayerShip::Shoot(float Value)
 			LocalMove.X -= 0.8f;
 		}
 	}
-	else {
-		GEngine->AddOnScreenDebugMessage(-1, 50.f, FColor::Red, FString::Printf(TEXT("No ammo, reload!")));
+	else if (GunClickSound) 
+	{
+		UGameplayStatics::PlaySound2D(GetWorld(), GunClickSound, 0.7f);
 	}
 }
 
@@ -370,11 +388,17 @@ void APlayerShip::Shoot(float Value)
 /** We need an init function to start the timer for the main function */
 void APlayerShip::InitReload()
 {
+	if (bIsReloading)
+	{
+		PlayErrorSound();
+		return;
+	}
+
+	bIsReloading = true;
+	UGameplayStatics::PlaySound2D(GetWorld(), ReloadingSound, 4.f);
 	FTimerHandle handle, handle2;
 	GetWorld()->GetTimerManager().SetTimer(handle, this, &APlayerShip::Reload, 1.f, false);
 	GetWorld()->GetTimerManager().SetTimer(handle2, this, &APlayerShip::PlayBulletCasingSound, 0.57f, false);
-
-	UGameplayStatics::PlaySound2D(GetWorld(), ReloadingSound, 2.f);
 }
 
 
@@ -386,8 +410,8 @@ void APlayerShip::PlayBulletCasingSound()
 
 void APlayerShip::Reload()
 {
-	GEngine->AddOnScreenDebugMessage(-1, 50.f, FColor::Green, FString::Printf(TEXT("Reloaded!")));
-	Ammo = 200;
+	Ammo = MaxAmmo;
+	bIsReloading = false;
 }
 
 
@@ -396,9 +420,10 @@ void APlayerShip::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActo
 	if (!OtherActor || OtherActor == this || !OtherComponent || OtherActor->IsA(ABullet::StaticClass())) { return; }
 	
 
-
+	/** Check if the overlapping object is an enemy */
 	if (OtherActor->IsA(AEnemyZlorp::StaticClass()))
 	{
+		/** Cooldown system; Makes sure you don't get instakilled by overlapping as it relies on tick.  */
 		bool bIsOnCooldown = false;
 		for (int i{}; i < Attackers.Num(); i++)
 		{
@@ -410,18 +435,11 @@ void APlayerShip::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActo
 
 		if (!bIsOnCooldown)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("OH SHIT"))
-				UE_LOG(LogTemp, Warning, TEXT("Attackers: %d"), Attackers.Num())
-			TakeDamage(-50.f);
+			AddHealth(-50.f);
 			Attackers.Add(OtherActor);
 			Timers.Add(0.f);
 		}
 	}
-}
-
-
-void APlayerShip::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex)
-{
 }
 
 

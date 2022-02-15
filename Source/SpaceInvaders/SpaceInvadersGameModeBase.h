@@ -23,6 +23,10 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 
+	FVector GetRandomSpawnLocation();
+
+	void AddKills();
+
 	// Variables
 	FVector PlayerLocation;
 
@@ -32,10 +36,18 @@ public:
 	UPROPERTY(EditAnywhere, Category = "ActorsToSpawn")
 	TSubclassOf<class APlayerShip> PlayerShipBP;
 
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	float SpawnDistance;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	int KillsToWin;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	int MaxAllowedEnemies;
+
+	UPROPERTY()
 	TArray<class AEnemyZlorp*> SpawnedZlorps;
 
-	bool bAllDead;
-	float SpawnsRemaining;
-	float SpawnDistance;
 	float WaitTime;
+	int Kills;
 };

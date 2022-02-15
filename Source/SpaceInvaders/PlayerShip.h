@@ -10,6 +10,9 @@
 #include "Components/ArrowComponent.h"
 #include "Components/BoxComponent.h"
 #include "EnemyZlorp.h"
+#include "Blueprint/UserWidget.h"
+#include "HUDContainer.h"
+#include "GameFramework/HUD.h"
 #include "PlayerShip.generated.h"
 
 UCLASS()
@@ -64,6 +67,15 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SoundVariables")
 	USoundBase* DashSound;
 
+	UPROPERTY(EditAnywhere, Category = "SoundVariables")
+	USoundBase* HitSound;
+
+	UPROPERTY(EditAnywhere, Category = "SoundVariables")
+	USoundBase* GunClickSound;
+
+	UPROPERTY(EditAnywhere, Category = "SoundVariables")
+	USoundBase* ErrorSound;
+
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"));
 	TSubclassOf<AActor> BulletActorToSpawn;
 
@@ -106,9 +118,6 @@ private:
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
-	UFUNCTION()
-	void OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex);
-
 	FVector InitialLocation;
 
 	// Player input
@@ -125,8 +134,9 @@ private:
 	void PlayBulletCasingSound();
 	void Reload();
 	void ResetLocation();
-	void TakeDamage(float DamageAmount);
+	void AddHealth(float Amount);
 	void EndDamageEffect();
+	void PlayErrorSound();
 
 	bool bPitchHasInput;
 	bool bRollHasInput;
@@ -144,7 +154,9 @@ private:
 	float InitialArmLength;
 	float Health;
 	int Ammo;
-
+	bool bIsReloading;
+	bool bIsDashing;
+	float EnemyCooldownTime;
 	UMaterialInterface* InitialMaterial;
 
 	TArray<AActor*> Attackers;

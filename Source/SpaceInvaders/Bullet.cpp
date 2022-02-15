@@ -17,15 +17,15 @@ ABullet::ABullet()
 	{
 		BaseMesh->SetStaticMesh(BulletRef.Object);
 	}
-	BaseMesh->SetRelativeScale3D(FVector(5.f, 5.f, 5.f));
+	BaseMesh->SetRelativeScale3D(FVector(6.5f, 6.5f, 6.5f));
 	SetRootComponent(BaseMesh);
 
-	//RootComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
-	//Cast<USphereComponent>(RootComponent)->OnComponentBeginOverlap.AddDynamic(this, &ABullet::OnOverlap);
-	ProjectileComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileComp"));
+	MaxBulletSpeed = 4000.f;
 
+	ProjectileComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileComp"));
 	ProjectileComp->ProjectileGravityScale = 0.5f;
 	ProjectileComp->InitialSpeed = MaxBulletSpeed;
+	ProjectileComp->MaxSpeed = MaxBulletSpeed;
 
 	TScriptDelegate<FWeakObjectPtr> StopDelegate;
 	StopDelegate.BindUFunction(this, FName("Kill"));
@@ -38,9 +38,8 @@ ABullet::ABullet()
 	TriggerCapsule->SetCollisionProfileName(TEXT("CapsuleTrigger"));
 	TriggerCapsule->SetupAttachment(GetRootComponent());
 	TriggerCapsule->OnComponentBeginOverlap.AddDynamic(this, &ABullet::OnOverlapBegin);
-	TriggerCapsule->OnComponentEndOverlap.AddDynamic(this, &ABullet::OnOverlapEnd);
-
 }
+
 
 // Called when the game starts or when spawned
 void ABullet::BeginPlay()
@@ -49,13 +48,14 @@ void ABullet::BeginPlay()
 
 	if (BulletShootSound)
 	{
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), BulletShootSound, GetActorLocation(), 0.5f);
+		UGameplayStatics::PlaySound2D(GetWorld(), BulletShootSound, 0.5f);
 	}
 	if (BulletFireFX)
 	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BulletFireFX, GetActorLocation(), FRotator::ZeroRotator, FVector(0.15f));
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BulletFireFX, GetActorLocation(), FRotator::ZeroRotator, FVector(0.3f));
 	}
 }
+
 
 // Called every frame
 void ABullet::Tick(float DeltaTime)
@@ -74,11 +74,11 @@ void ABullet::Tick(float DeltaTime)
 
 // ------------------------------ CUSTOM FUNCTIONS --------------------------- //
 
-
 void ABullet::Kill()
 {
 	this->Destroy();
 }
+
 
 void ABullet::OnOverlapBegin (
 	UPrimitiveComponent* OverlappedComponent, // Which self-owned component overlapped? (capsule component)
@@ -104,8 +104,8 @@ void ABullet::OnOverlapBegin (
 	if (OtherActor->IsA(AEnemyZlorp::StaticClass()))
 	{
 		//APawn* PlayerPawn = GetWorld()->GetFirstPlayerController()->GetPawn();
-		AEnemyZlorp* temp = Cast<AEnemyZlorp>(OtherActor);
-		temp->AddHealth(-50.f); 
+		AEnemyZlorp* TempZlorp = Cast<AEnemyZlorp>(OtherActor);
+		TempZlorp->AddHealth(-50.f); 
 	}
 
 	// Play bullet hit sound & effect then begone
@@ -129,15 +129,5 @@ void ABullet::OnOverlapBegin (
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BulletHitFX, GetActorLocation(), FRotator::ZeroRotator, FVector(0.4f));
 	}
 	this->Destroy();
-}
-
-
-void ABullet::OnOverlapEnd (
-	UPrimitiveComponent* OverlappedComponent, 
-	AActor* OtherActor, 
-	UPrimitiveComponent* OtherComponent, 
-	int32 OtherBodyIndex)
-{
-	//UE_LOG(LogTemp, Warning, TEXT("%s stopped overlapping with %s"), *this->GetFName().ToString(), *(OtherActor)->GetFName().ToString());
 }
 
