@@ -19,7 +19,7 @@ class SPACEINVADERS_API AHUDContainer : public AHUD
 	GENERATED_BODY()
 	
 public:
-	AHUDContainer();
+	//AHUDContainer();
 
 	virtual void BeginPlay() override;
 
@@ -39,7 +39,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Widgets")
 	TSubclassOf<UUserWidget> IGWidgetClass;
 	
-private:
 	UMenuWidget* MWidget;
 	UInGameWidget* IGWidget;
 };

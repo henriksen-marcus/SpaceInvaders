@@ -6,17 +6,56 @@
 void UInGameWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	if (KeyGuideWindow)
+	{
+		KeyGuideWindow->SetVisibility(ESlateVisibility::Hidden);
+	}
+	if (DeathScreen)
+	{
+		DeathScreen->SetVisibility(ESlateVisibility::Hidden);
+	}
 }
 
 
 void UInGameWidget::Update(int32 KillCount)
 {
-	KillsTxt->SetText(FText::AsNumber(KillCount));
+	if (KillsTxt)
+	{
+		KillsTxt->SetText(FText::AsNumber(KillCount));
+	}
 }
 
 
 void UInGameWidget::Update(int32 Ammo, float Health)
 {
-	AmmoTxt->SetText(FText::AsNumber(Ammo));
-	HealthBar->SetPercent(Health / 500);
+	if (AmmoTxt && HealthBar)
+	{
+		AmmoTxt->SetText(FText::AsNumber(Ammo));
+		HealthBar->SetPercent(Health / 500);
+	}
+}
+
+
+void UInGameWidget::ShowKeyGuide()
+{
+	if (KeyGuideWindow)
+	{
+		if (KeyGuideWindow->GetVisibility() == ESlateVisibility::Hidden)
+		{
+			KeyGuideWindow->SetVisibility(ESlateVisibility::Visible);
+		}
+		else 
+		{
+			KeyGuideWindow->SetVisibility(ESlateVisibility::Hidden);
+		}
+	}
+}
+
+void UInGameWidget::ShowDeathScreen()
+{
+	if (DeathScreen)
+	{
+		DeathScreen->SetVisibility(ESlateVisibility::Visible);
+	}
 }

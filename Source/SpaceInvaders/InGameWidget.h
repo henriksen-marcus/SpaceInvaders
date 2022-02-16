@@ -19,6 +19,9 @@ public:
 	void Update(int32 KillCount);
 	void Update(int32 Ammo, float Health);
 
+	void ShowKeyGuide();
+	void ShowDeathScreen();
+
 protected:
 	virtual void NativeConstruct() override;
 
@@ -31,4 +34,9 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* KillsTxt;
 
+	UPROPERTY(meta = (BindWidget))
+	UCanvasPanel* KeyGuideWindow;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* DeathScreen;
 };

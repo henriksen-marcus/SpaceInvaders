@@ -17,13 +17,15 @@ ABullet::ABullet()
 	{
 		BaseMesh->SetStaticMesh(BulletRef.Object);
 	}
-	BaseMesh->SetRelativeScale3D(FVector(6.5f, 6.5f, 6.5f));
+	BaseMesh->SetRelativeScale3D(FVector(7.f, 7.f, 7.f));
 	SetRootComponent(BaseMesh);
 
-	MaxBulletSpeed = 4000.f;
+	MaxBulletSpeed = 6000.f;
+	TimeLived = 0.f;
+	TimeBeforeDestroy = 5.f;
 
 	ProjectileComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileComp"));
-	ProjectileComp->ProjectileGravityScale = 0.5f;
+	ProjectileComp->ProjectileGravityScale = 0.3f;
 	ProjectileComp->InitialSpeed = MaxBulletSpeed;
 	ProjectileComp->MaxSpeed = MaxBulletSpeed;
 
@@ -113,10 +115,10 @@ void ABullet::OnOverlapBegin (
 	{
 		if (FMath::RandBool())
 		{
-			UGameplayStatics::PlaySound2D(GetWorld(), BulletHitSound1, 0.7f, 2.f);
+			UGameplayStatics::PlaySound2D(GetWorld(), BulletHitSound1, 0.6f, 1.6f);
 		}
 		else {
-			UGameplayStatics::PlaySound2D(GetWorld(), BulletHitSound2, 0.7f);
+			UGameplayStatics::PlaySound2D(GetWorld(), BulletHitSound2, 0.6f, 1.6f);
 		}
 	}
 	else if (BulletHitSound1) 

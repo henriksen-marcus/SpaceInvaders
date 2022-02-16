@@ -3,11 +3,6 @@
 
 #include "HUDContainer.h"
 
-AHUDContainer::AHUDContainer()
-{
-	
-}
-
 
 void AHUDContainer::BeginPlay()
 {

@@ -12,7 +12,7 @@ AEnemyZlorp::AEnemyZlorp()
 	PrimaryActorTick.bCanEverTick = true;
 	TargetVector = FVector::ZeroVector;
 	Health = 200.f;
-	ZlorpSpeed = 3500.f;
+	ZlorpSpeed = 3800.f;
 	TargetOffset = 0;
 	Timer = 0;
 
@@ -88,7 +88,7 @@ void AEnemyZlorp::AddHealth(float ChangeAmount)
 		if (DeathFX)
 		{
 			FVector Loc = GetActorLocation();
-			Loc.Z -= 50.f;
+			Loc.Z -= 70.f;
 			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DeathFX, Loc, GetActorRotation(), FVector(2.f));
 		}
 		/** Manage garbage and add kills to the counter in the custom gamemode */

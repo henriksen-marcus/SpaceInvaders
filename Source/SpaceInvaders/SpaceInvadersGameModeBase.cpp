@@ -3,6 +3,7 @@
 
 #include "SpaceInvadersGameModeBase.h"
 #include "Kismet/GameplayStatics.h"
+#include "PlayerShip.h"
 
 
 ASpaceInvadersGameModeBase::ASpaceInvadersGameModeBase()
@@ -13,31 +14,21 @@ ASpaceInvadersGameModeBase::ASpaceInvadersGameModeBase()
 	Kills = 0;
 	KillsToWin = 20;
 	MaxAllowedEnemies = 5;
+	bGameStarted = false;
 }
 
 void ASpaceInvadersGameModeBase::BeginPlay()
 {
-	if (GetWorld())
-	{
-		AActor* TempActor = UGameplayStatics::GetActorOfClass(GetWorld(), PlayerShipBP);
-		APlayerShip* TempShip = Cast<APlayerShip>(TempActor);
-		if (TempShip) 
-		{
-			PlayerLocation = TempShip->GetLoc();
-			for (int i{}; i < MaxAllowedEnemies; i++) 
-			{
-				AEnemyZlorp* TempEnemy = GetWorld()->SpawnActor<AEnemyZlorp>(EnemyZlorpBP, GetRandomSpawnLocation(), FRotator::ZeroRotator);
-				SpawnedZlorps.Add(TempEnemy);
-			}
-		}
-	}
-
 	HUDContainer = Cast<AHUDContainer>(GetWorld()->GetFirstPlayerController()->GetHUD());
+	GetWorld()->GetFirstPlayerController()->SetInputMode(FInputModeUIOnly());
+	GetWorld()->GetFirstPlayerController()->SetShowMouseCursor(true);
 }
 
 
 void ASpaceInvadersGameModeBase::Tick(float DeltaSeconds)
 {
+	if (!bGameStarted) { return; }
+
 	if (WaitTime >= 0.5f)
 	{
 		WaitTime = 0.f;

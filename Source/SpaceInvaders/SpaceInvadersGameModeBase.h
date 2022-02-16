@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "PlayerShip.h"
 #include "EnemyZlorp.h"
 #include "HUDContainer.h"
 #include "SpaceInvadersGameModeBase.generated.h"
@@ -49,6 +48,7 @@ public:
 
 	float WaitTime;
 	int Kills;
+	bool bGameStarted;
 
-	AHUDContainer* HUDContainer;
+	class AHUDContainer* HUDContainer;
 };

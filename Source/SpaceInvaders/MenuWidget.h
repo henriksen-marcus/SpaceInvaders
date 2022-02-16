@@ -22,16 +22,10 @@ protected:
 	UButton* PlayBtn;
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* KeyGuideBtn;
-
-	UPROPERTY(meta = (BindWidget))
 	UButton* QuitBtn;
 
 	UFUNCTION()
 	void Play();
-
-	UFUNCTION()
-	void ShowKeyGuide();
 
 	UFUNCTION()
 	void Quit();

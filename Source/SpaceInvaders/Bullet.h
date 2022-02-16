@@ -42,13 +42,13 @@ private:
 		UStaticMeshComponent* BaseMesh;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		float TimeBeforeDestroy = 20.f;
+		float TimeBeforeDestroy;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		float TimeLived = 0.f;
+		float TimeLived;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		float MaxBulletSpeed = 3000.f;
+		float MaxBulletSpeed;
 	
 	UPROPERTY(EditAnywhere, Category = "CapsuleCollision")
 		UCapsuleComponent* TriggerCapsule;

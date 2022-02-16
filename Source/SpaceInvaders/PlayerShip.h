@@ -10,7 +10,7 @@
 #include "Components/ArrowComponent.h"
 #include "Components/BoxComponent.h"
 #include "EnemyZlorp.h"
-#include "HUDContainer.h"
+#include "SpaceInvadersGameModeBase.h"
 #include "PlayerShip.generated.h"
 
 UCLASS()
@@ -37,12 +37,13 @@ public:
 
 
 public:
+	/** Returns the location of the playership */
 	UFUNCTION()
 	FVector GetLoc();
 
 private:
 	UPROPERTY(EditAnywhere, Category = "PlayerMesh", meta = (AllowPrivateAccess = "true"))
-		UStaticMeshComponent* BaseMesh;
+	UStaticMeshComponent* BaseMesh;
 
 	UPROPERTY(EditAnywhere, Category = "CameraVariables")
 	USpringArmComponent* SpringArm;
@@ -52,9 +53,6 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
 	UArrowComponent* BulletSpawnPoint;
-
-	UPROPERTY(VisibleAnywhere, Category = "TriggerCapsule")
-	UBoxComponent* CollisionBox;
 
 	UPROPERTY(EditAnywhere, Category = "SoundVariables")
 	USoundBase* ReloadingSound;
@@ -74,11 +72,23 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SoundVariables")
 	USoundBase* ErrorSound;
 
+	UPROPERTY(EditAnywhere, Category = "SoundVariables")
+	USoundBase* JumpSound;
+
+	UPROPERTY(EditAnywhere, Category = "SoundVariables")
+	USoundBase* DeathSound;
+
+	UPROPERTY(EditAnywhere, Category = "SoundVariables")
+	USoundBase* GameOverSound;
+
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"));
 	TSubclassOf<AActor> BulletActorToSpawn;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
 	UCurveFloat* DistanceCurve;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UCurveFloat* JumpCurve;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
 	int MaxAmmo;
@@ -112,6 +122,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
 	UParticleSystem* ThrustFX;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UParticleSystem* DeathFX;
 	
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult);
@@ -131,10 +144,16 @@ private:
 	void InitReload();
 	void PlayBulletCasingSound();
 	void Reload();
+	void Jump();
+	void JumpEnd();
 	void ResetLocation();
 	void AddHealth(float Amount);
 	void EndDamageEffect();
 	void PlayErrorSound();
+	void EscPressed();
+	void TabPressed();
+	void Die();
+	void GameOver();
 
 	bool bPitchHasInput;
 	bool bRollHasInput;
@@ -155,12 +174,17 @@ private:
 	bool bIsReloading;
 	bool bIsDashing;
 	float EnemyCooldownTime;
+	bool bIsJumping;
+	float JumpTime;
+	bool bIsStopped;
+	bool bHasBeenRun1;
+	bool bHasBeenRun2;
 	UMaterialInterface* InitialMaterial;
 
 	TArray<AActor*> Attackers;
 	TArray<float> Timers;
 
-	AHUDContainer* HUDContainer;
+	class AHUDContainer* HUDContainer;
 
 	void Pause();
 	void Unpause();

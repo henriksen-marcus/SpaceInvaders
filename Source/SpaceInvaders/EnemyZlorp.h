@@ -41,11 +41,9 @@ public:
 	void AddHealth(float ChangeAmount);
 
 	UPROPERTY(EditAnywhere, Category = "ZlorpVariables")
-		float Health;
+	float Health;
 
 private:
-	
-
 	UPROPERTY(EditAnywhere, Category = "ZlorpVariables")
 	float ZlorpSpeed;
 
