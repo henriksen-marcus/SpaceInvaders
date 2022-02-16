@@ -3,7 +3,6 @@
 
 #include "SpaceInvadersGameModeBase.h"
 #include "Kismet/GameplayStatics.h"
-//#include "SIGameState.h"
 
 
 ASpaceInvadersGameModeBase::ASpaceInvadersGameModeBase()
@@ -32,6 +31,8 @@ void ASpaceInvadersGameModeBase::BeginPlay()
 			}
 		}
 	}
+
+	HUDContainer = Cast<AHUDContainer>(GetWorld()->GetFirstPlayerController()->GetHUD());
 }
 
 
@@ -66,6 +67,11 @@ void ASpaceInvadersGameModeBase::Tick(float DeltaSeconds)
 		UE_LOG(LogTemp, Warning, TEXT("Zlorp: %d"), SpawnedZlorps.Num())
 	}
 	WaitTime += DeltaSeconds;
+
+	if (HUDContainer)
+	{
+		HUDContainer->UpdateIGWidget(Kills);
+	}
 }
 
 

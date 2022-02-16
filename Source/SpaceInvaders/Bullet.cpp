@@ -113,7 +113,7 @@ void ABullet::OnOverlapBegin (
 	{
 		if (FMath::RandBool())
 		{
-			UGameplayStatics::PlaySound2D(GetWorld(), BulletHitSound1, 0.7f);
+			UGameplayStatics::PlaySound2D(GetWorld(), BulletHitSound1, 0.7f, 2.f);
 		}
 		else {
 			UGameplayStatics::PlaySound2D(GetWorld(), BulletHitSound2, 0.7f);

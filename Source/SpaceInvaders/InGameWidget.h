@@ -16,7 +16,8 @@ class SPACEINVADERS_API UInGameWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	void Update(int32 KillCount, int32 AmmoCount, float HealthAmount);
+	void Update(int32 KillCount);
+	void Update(int32 Ammo, float Health);
 
 protected:
 	virtual void NativeConstruct() override;

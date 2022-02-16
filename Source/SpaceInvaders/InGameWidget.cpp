@@ -9,9 +9,14 @@ void UInGameWidget::NativeConstruct()
 }
 
 
-void UInGameWidget::Update(int32 KillCount, int32 AmmoCount, float HealthAmount)
+void UInGameWidget::Update(int32 KillCount)
 {
 	KillsTxt->SetText(FText::AsNumber(KillCount));
-	AmmoTxt->SetText(FText::AsNumber(AmmoCount));
-	HealthBar->SetPercent(HealthAmount / 500);
+}
+
+
+void UInGameWidget::Update(int32 Ammo, float Health)
+{
+	AmmoTxt->SetText(FText::AsNumber(Ammo));
+	HealthBar->SetPercent(Health / 500);
 }

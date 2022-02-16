@@ -4,8 +4,7 @@
 #include "PlayerShip.h"
 #include "GameFramework/PlayerInput.h"
 #include "Components/InputComponent.h"
-#include "bullet.h"
-#include "Kismet/GameplayStatics.h"
+#include "Bullet.h"
 #include "Engine/World.h"
 #include "Camera/CameraActor.h"
 #include "Engine/Engine.h"
@@ -14,6 +13,10 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Components/TimelineComponent.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Runtime/UMG/Public/UMG.h"
+#include "Components/WidgetComponent.h"
+#include "InGameWidget.h"
+#include "MenuWidget.h"
 
 // Sets default values
 APlayerShip::APlayerShip()
@@ -137,10 +140,12 @@ void APlayerShip::BeginPlay()
 		ThrustFX3->SetTemplate(ThrustFX);
 		ThrustFX4->SetTemplate(ThrustFX);
 	}
-	AHUDContainer* HUDContainer = Cast<AHUDContainer>(GetWorld()->GetFirstPlayerController()->GetHUD());
+	
+	HUDContainer = Cast<AHUDContainer>(GetWorld()->GetFirstPlayerController()->GetHUD());
+
 	if (HUDContainer)
 	{
-		HUDContainer->UpdateIGWidget(20, 21, 200);
+		HUDContainer->UpdateIGWidget(Ammo, Health);
 	}
 }
 
@@ -175,6 +180,11 @@ void APlayerShip::Tick(float DeltaTime)
 			Attackers.RemoveAt(i);
 		}
 	}
+
+	if (HUDContainer)
+	{
+		HUDContainer->UpdateIGWidget(Ammo, Health);
+	}
 }
 
 
@@ -196,6 +206,9 @@ void APlayerShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
 	PlayerInputComponent->BindAction("Dash", EInputEvent::IE_Pressed, this, &APlayerShip::Dash);
 	PlayerInputComponent->BindAction("Reload", EInputEvent::IE_Pressed, this, &APlayerShip::InitReload);
+	PlayerInputComponent->BindAction("Pause", EInputEvent::IE_Pressed, this, &APlayerShip::Pause);
+	PlayerInputComponent->BindAction("Unpause", EInputEvent::IE_Pressed, this, &APlayerShip::Unpause);
+
 }
 
 
@@ -240,7 +253,9 @@ void APlayerShip::Pitch(float Value)
 	// Interpolate rotation towards target
 	NextPitchPosition = FMath::FInterpTo(GetActorRotation().Pitch, TargetPitch, GetWorld()->GetDeltaSeconds(), 6.0f);
 	float TargetXSpeed = bPitchHasInput ? (Value * 30.f * SpeedBoost) : 0.f;
-	LocalMove.X = FMath::FInterpTo(LocalMove.X, TargetXSpeed, GetWorld()->GetDeltaSeconds(), 2.f);
+	float CurveStrength;
+	CurveStrength = SpeedBoost > 1.f ? 4.f : 2.f;
+	LocalMove.X = FMath::FInterpTo(LocalMove.X, TargetXSpeed, GetWorld()->GetDeltaSeconds(), CurveStrength);
 }
 
 
@@ -277,6 +292,7 @@ void APlayerShip::Yaw(float Value)
 
 void APlayerShip::Dash() 
 {
+
 	if (bIsDashing) 
 	{
 		PlayErrorSound();
@@ -361,9 +377,20 @@ void APlayerShip::PlayErrorSound()
 	}
 }
 
+void APlayerShip::Pause() // P
+{
+	UGameplayStatics::SetGamePaused(GetWorld(), true);
+}
+
+void APlayerShip::Unpause() // O
+{
+	UGameplayStatics::SetGamePaused(GetWorld(), false);
+}
+
 
 void APlayerShip::Shoot(float Value)
 {
+	
 	if (!Value || ShootTimer < 0.09f) { return; }
 	ShootTimer = 0.f;
 	if (Ammo > 0) {

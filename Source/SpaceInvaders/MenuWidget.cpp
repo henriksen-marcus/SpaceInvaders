@@ -15,7 +15,11 @@ void UMenuWidget::NativeConstruct()
 
 void UMenuWidget::Play()
 {
-	this->RemoveFromViewport();
+	if (this)
+	{
+		this->RemoveFromViewport();
+	}
+	
 
 	AHUDContainer* HUDContainer = Cast<AHUDContainer>(GetWorld()->GetFirstPlayerController()->GetHUD());
 	if (HUDContainer)

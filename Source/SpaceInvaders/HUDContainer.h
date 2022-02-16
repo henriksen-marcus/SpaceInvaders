@@ -27,8 +27,9 @@ public:
 
 	virtual void DrawHUD() override;
 
-	UFUNCTION()
-	void UpdateIGWidget(int32 KillCount, int32 AmmoCount, float Health);
+
+	void UpdateIGWidget(int32 Ammo, float Health);
+	void UpdateIGWidget(int32 KillCount);
 
 	void ShowIGWidget();
 

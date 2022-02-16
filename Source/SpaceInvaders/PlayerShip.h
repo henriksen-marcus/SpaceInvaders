@@ -10,9 +10,7 @@
 #include "Components/ArrowComponent.h"
 #include "Components/BoxComponent.h"
 #include "EnemyZlorp.h"
-#include "Blueprint/UserWidget.h"
 #include "HUDContainer.h"
-#include "GameFramework/HUD.h"
 #include "PlayerShip.generated.h"
 
 UCLASS()
@@ -161,4 +159,9 @@ private:
 
 	TArray<AActor*> Attackers;
 	TArray<float> Timers;
+
+	AHUDContainer* HUDContainer;
+
+	void Pause();
+	void Unpause();
 };

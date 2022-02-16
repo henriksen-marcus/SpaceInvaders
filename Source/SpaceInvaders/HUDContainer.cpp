@@ -43,11 +43,20 @@ void AHUDContainer::DrawHUD()
 }
 
 
-void AHUDContainer::UpdateIGWidget(int32 KillCount, int32 AmmoCount, float Health)
+void AHUDContainer::UpdateIGWidget(int32 Ammo, float Health)
 {
 	if (IGWidget)
 	{
-		IGWidget->Update(KillCount, AmmoCount, Health);
+		IGWidget->Update(Ammo, Health);
+	}
+}
+
+
+void AHUDContainer::UpdateIGWidget(int32 KillCount)
+{
+	if (IGWidget)
+	{
+		IGWidget->Update(KillCount);
 	}
 }
 
