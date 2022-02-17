@@ -29,7 +29,7 @@ void UInGameWidget::Update(int32 KillCount)
 
 void UInGameWidget::Update(int32 Ammo, float Health)
 {
-	if (AmmoTxt && HealthBar)
+	if (AmmoTxt && HealthBar && Ammo && Health)
 	{
 		AmmoTxt->SetText(FText::AsNumber(Ammo));
 		HealthBar->SetPercent(Health / 500);

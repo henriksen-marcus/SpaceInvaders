@@ -12,6 +12,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "GenericPlatform/GenericPlatformMisc.h"
 
 // Sets default values
 APlayerShip::APlayerShip()
@@ -530,10 +531,8 @@ FVector APlayerShip::GetLoc()
 
 void APlayerShip::EscPressed()
 {
-	if (bIsStopped)
-	{
-		FGenericPlatformMisc::RequestExit(false);
-	}
+	//UKismetSystemLibrary::QuitGame(GetWorld(), GetWorld()->GetFirstPlayerController(), EQuitPreference::Quit, false);
+	FGenericPlatformMisc::RequestExit(false);
 }
 
 
@@ -558,7 +557,7 @@ void APlayerShip::GameOver()
 	bHasBeenRun2 = true;
 	if (GameOverSound)
 	{
-		UGameplayStatics::PlaySound2D(GetWorld(), GameOverSound);
+		UGameplayStatics::PlaySound2D(GetWorld(), GameOverSound, 2.f);
 	}
 	HUDContainer->IGWidget->ShowDeathScreen();
 }
