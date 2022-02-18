@@ -25,9 +25,6 @@ public:
 
 	virtual void Tick(float DeltaSeconds) override;
 
-	virtual void DrawHUD() override;
-
-
 	void UpdateIGWidget(int32 Ammo, float Health);
 	void UpdateIGWidget(int32 KillCount);
 

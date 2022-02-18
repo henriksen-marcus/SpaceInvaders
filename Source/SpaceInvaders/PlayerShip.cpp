@@ -20,7 +20,7 @@ APlayerShip::APlayerShip()
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Base Mesh
+	/** Spaceship mesh */
 	BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShipMesh"));
 	ConstructorHelpers::FObjectFinder<UStaticMesh> SpaceshipRef(TEXT("StaticMesh'/Game/Meshes/Spaceship/spaceship.spaceship'"));
 
@@ -35,6 +35,8 @@ APlayerShip::APlayerShip()
 	BaseMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 	SetRootComponent(BaseMesh);
 
+	/** I can actually just use the mesh as a collision detector, as I have assigned 
+	simplified 26DOP collision to it in the mesh editor */
 	BaseMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	BaseMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
 	BaseMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerShip::OnOverlapBegin);
@@ -45,7 +47,7 @@ APlayerShip::APlayerShip()
 	MaxSpeedBoost = 4.f;
 	SpeedBoost = 1.f;
 	InitialArmLength = 1000.f;
-	MaxHealth = 500.f;
+	MaxHealth = 300.f;
 	Health = MaxHealth;
 	InitialMaterial = BaseMesh->GetMaterial(0);
 	bIsReloading = false;
@@ -53,31 +55,28 @@ APlayerShip::APlayerShip()
 	bIsJumping = false;
 	JumpTime = 0.f;
 	EnemyCooldownTime = 1.f;
-	bIsStopped = false;
-	bHasBeenRun1 = false;
-	bHasBeenRun2 = false;
+	IgnoreInput = false;
+	GameWon = false;
 
-	//Bullet spawn point
 	BulletSpawnPoint = CreateDefaultSubobject<UArrowComponent>(TEXT("BulletSpawnPoint"));
 	BulletSpawnPoint->SetupAttachment(GetRootComponent());
 	BulletSpawnPoint->SetRelativeLocation(FVector(500.f, 0.f, -170.f));
 
-	// Spring Arm
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetRelativeRotation(FRotator(-30.f, 0.f, 0.f));
 	SpringArm->SetUsingAbsoluteRotation(true);
 	SpringArm->TargetArmLength = InitialArmLength;
-	//SpringArm->bEnableCameraLag = true;
-	//SpringArm->CameraLagSpeed = 10.f; // Lower = More delay
+	SpringArm->bEnableCameraLag = true;
+	SpringArm->CameraLagSpeed = 25.f; // Lower = More delay
 	SpringArm->bDoCollisionTest = false;
 	SpringArm->SetupAttachment(GetRootComponent());
 
-	// Camera
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->bUsePawnControlRotation = false;
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->SetRelativeRotation(FRotator(10.f, 0.f, 0.f));
 
+	/** Curve for camera distance when pitching the camera */
 	ConstructorHelpers::FObjectFinder<UCurveFloat> CurveRef(TEXT("CurveFloat'/Game/Misc/SpringArmTargetArmLength.SpringArmTargetArmLength'"));
 
 	if (CurveRef.Succeeded())
@@ -125,6 +124,11 @@ APlayerShip::APlayerShip()
 	ThrustFX2->bAutoActivate = false;
 	ThrustFX3->bAutoActivate = false;
 	ThrustFX4->bAutoActivate = false;
+
+	DeathFXComponent = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("DeathFX"));
+	DeathFXComponent->SetupAttachment(GetRootComponent());
+	DeathFXComponent->bAutoActivate = false;
+	DeathFXComponent->SetRelativeScale3D(FVector(7.f, 7.f, 7.f));
 }
 
 
@@ -133,13 +137,18 @@ void APlayerShip::BeginPlay()
 	Super::BeginPlay();
 	InitialLocation = GetActorLocation();
 
-	/** Apply effects to all subobjects, so you don't have to assign 4 values in blueprints */
+	/** Apply effects to all subobjects, so you don't have to assign 4 individual values in blueprints */
 	if (ThrustFX)
 	{
 		ThrustFX1->SetTemplate(ThrustFX);
 		ThrustFX2->SetTemplate(ThrustFX);
 		ThrustFX3->SetTemplate(ThrustFX);
 		ThrustFX4->SetTemplate(ThrustFX);
+	}
+
+	if (DeathFX)
+	{
+		DeathFXComponent->SetTemplate(DeathFX);
 	}
 	
 	HUDContainer = Cast<AHUDContainer>(GetWorld()->GetFirstPlayerController()->GetHUD());
@@ -158,39 +167,58 @@ void APlayerShip::Tick(float DeltaTime)
 	ShootTimer += DeltaTime;
 
 	/** Ship movement */
-	if (Health)
+	AddActorLocalOffset(LocalMove * DeltaTime * 110.f, true);
+	/** Constant Z location and jumping functionality */
+	FVector Loc = GetActorLocation();
+	if (bIsJumping && JumpCurve)
 	{
-		AddActorLocalOffset(LocalMove * DeltaTime * 110.f, true);
-
-		FVector Loc = GetActorLocation();
-
-		if (bIsJumping && JumpCurve)
-		{
-			Loc.Z = InitialLocation.Z + JumpCurve->GetFloatValue(JumpTime) * 1500;
-			JumpTime += DeltaTime;
-		}
-		else {
-			Loc.Z = InitialLocation.Z;
-		}
-
-		SetActorLocation(Loc, true);
-		SetActorRotation(FRotator(NextPitchPosition, NextYawPosition, NextRollPosition));
-
-		/** Springarm rotation */
-		FRotator SpringArmRotation = SpringArm->GetRelativeRotation();
-		FRotator NewRot = FMath::RInterpTo(SpringArmRotation, GetActorRotation(), DeltaTime, 25.f);
-		NewRot.Pitch = SpringArmRotation.Pitch;
-		NewRot.Roll = 0;
-		SpringArm->SetWorldRotation(NewRot);
+		Loc.Z = InitialLocation.Z + JumpCurve->GetFloatValue(JumpTime) * 1500;
+		JumpTime += DeltaTime;
 	}
 	else {
-		Die();
-		LocalMove.X = FMath::FInterpTo(LocalMove.X, 0.f, DeltaTime, 0.5f);
-		AddActorLocalOffset(LocalMove * DeltaTime * 110.f, true);
-		if (FMath::IsNearlyZero(LocalMove.X, 1.f) && !bHasBeenRun2)
+		Loc.Z = InitialLocation.Z;
+	}
+	SetActorLocation(Loc, true);
+
+	SetActorRotation(FRotator(NextPitchPosition, NextYawPosition, NextRollPosition));
+
+	/** Springarm rotation */
+	FRotator SpringArmRotation = SpringArm->GetRelativeRotation();
+	FRotator NewRot = FMath::RInterpTo(SpringArmRotation, GetActorRotation(), DeltaTime, 25.f);
+	NewRot.Pitch = SpringArmRotation.Pitch;
+	NewRot.Roll = 0;
+	SpringArm->SetWorldRotation(NewRot);
+
+	/** Game has ended if one of these are true */
+	if (IgnoreInput || GameWon)
+	{
+		IgnoreInput = true;
+
+		if (!Health)
 		{
-			GameOver();
+			/** Run only once */
+			static bool HasDied;
+			if (!HasDied)
+			{
+				Die();
+				HasDied = true;
+			}
 		}
+		else 
+		{
+			/** Run only once */
+			static bool HasWon;
+			if (!HasWon)
+			{
+				Win();
+				HasWon = true;
+			}
+		}
+		
+		/** Since input is blocked, interp movement to zero */
+		LocalMove = FMath::VInterpTo(LocalMove, FVector::ZeroVector, DeltaTime, 3.f);
+		NextPitchPosition = FMath::FInterpTo(NextPitchPosition, 0.f, DeltaTime, 1.f);
+		NextRollPosition = FMath::FInterpTo(NextRollPosition, 0.f, DeltaTime, 1.f);
 	}
 	
 	/** Timer system for enemies, see function OnOverlapBegin() */
@@ -204,6 +232,7 @@ void APlayerShip::Tick(float DeltaTime)
 		}
 	}
 
+	/** Update in-game HUD */
 	if (HUDContainer)
 	{
 		HUDContainer->UpdateIGWidget(Ammo, Health);
@@ -224,7 +253,8 @@ void APlayerShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
 	PlayerInputComponent->BindAxis("CameraPitch", this, &APlayerShip::CameraPitch);
 	PlayerInputComponent->BindAxis("Yaw", this, &APlayerShip::Yaw);
-	
+
+	/** Shoot is an axis binding so that you can hold to shoot fast */
 	PlayerInputComponent->BindAxis("Shoot", this, &APlayerShip::Shoot);
 
 	PlayerInputComponent->BindAction("Dash", EInputEvent::IE_Pressed, this, &APlayerShip::Dash);
@@ -233,14 +263,10 @@ void APlayerShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	PlayerInputComponent->BindAction("Esc", EInputEvent::IE_Pressed, this, &APlayerShip::EscPressed);
 	PlayerInputComponent->BindAction("Tab", EInputEvent::IE_Pressed, this, &APlayerShip::TabPressed);
 	PlayerInputComponent->BindAction("Tab", EInputEvent::IE_Released, this, &APlayerShip::TabPressed);
-
-	PlayerInputComponent->BindAction("Pause", EInputEvent::IE_Pressed, this, &APlayerShip::Pause);
-	PlayerInputComponent->BindAction("Unpause", EInputEvent::IE_Pressed, this, &APlayerShip::Unpause);
-
 }
 
 
-// Hardcode input mappings
+/** Hardcode input mappings */
 void APlayerShip::InitializeDefaultPawnInputBinding()
 {
 	static bool BindingsAdded = false;
@@ -269,11 +295,12 @@ void APlayerShip::InitializeDefaultPawnInputBinding()
 }
 
 
-
 // -------------------------------------- CUSTOM FUNCTIONS -------------------------------------- //
 
 void APlayerShip::Pitch(float Value)
 {
+	if (IgnoreInput) { return; }
+
 	// Determine if there is input
 	bPitchHasInput = !(Value == 0);
 	// If there is input, set rotation target to -25/25 based on input value, else set target to 0
@@ -288,6 +315,8 @@ void APlayerShip::Pitch(float Value)
 
 void APlayerShip::Roll(float Value)
 {
+	if (IgnoreInput) { return; }
+
 	// Determine if there is input
 	bRollHasInput = !(Value == 0);
 	// If there is input, set rotation target to -30/30 based on input value, else set target to 0
@@ -300,9 +329,16 @@ void APlayerShip::Roll(float Value)
 }
 
 
+void APlayerShip::Yaw(float Value)
+{
+	if (IgnoreInput) { return; }
+	NextYawPosition = GetActorRotation().Yaw + Value * GetWorld()->GetDeltaSeconds() * 50.f;
+}
+
+
 void APlayerShip::CameraPitch(float Value)
 {
-	if (!Value) { return; }
+	if (!Value || IgnoreInput) { return; }
 	FRotator CurrentRot = SpringArm->GetRelativeRotation();
 	float TargetPitch = FMath::Clamp(CurrentRot.Pitch + Value * 15.f, -50.f, 0.f);
 	CurrentRot.Pitch = FMath::FInterpTo(CurrentRot.Pitch, TargetPitch, GetWorld()->GetDeltaSeconds(), 10.f);
@@ -311,14 +347,10 @@ void APlayerShip::CameraPitch(float Value)
 	SpringArm->TargetArmLength = InitialArmLength * DistanceCurve->GetFloatValue(CurrentRot.Pitch);
 }
 
-void APlayerShip::Yaw(float Value)
-{
-	NextYawPosition = GetActorRotation().Yaw + Value * GetWorld()->GetDeltaSeconds() * 50.f;
-}
-
 
 void APlayerShip::Dash() 
 {
+	if (IgnoreInput) { return; }
 
 	if (bIsDashing) 
 	{
@@ -361,16 +393,9 @@ void APlayerShip::ResetDash()
 }
 
 
-void APlayerShip::ResetLocation()
-{
-	SetActorLocation(InitialLocation);
-}
-
-
+/** Can be used for health pack functionality or to take damage */
 void APlayerShip::AddHealth(float Amount)
 {
-	if (!Health) { return; }
-
 	Health = FMath::Clamp(Health + Amount, 0.f, MaxHealth);
 
 	if (Amount < 0 && DamageMaterial && HitSound)
@@ -384,12 +409,12 @@ void APlayerShip::AddHealth(float Amount)
 
 	if (!Health)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("You have died!"))
-		//this->Destroy();
+		IgnoreInput = true;
 	}
 }
 
 
+/** Reset material */
 void APlayerShip::EndDamageEffect()
 {
 	BaseMesh->SetMaterial(0, InitialMaterial);
@@ -401,19 +426,18 @@ void APlayerShip::PlayErrorSound()
 	if (ErrorSound)
 	{
 		UGameplayStatics::PlaySound2D(GetWorld(), ErrorSound, 0.8f);
-		//TSubclassOf<UCameraShakeBase> Hey;
-		//UGameplayStatics::PlayWorldCameraShake(GetWorld(), Hey, FVector::ZeroVector, 0.f, 0.f);
 	}
 }
 
 
 void APlayerShip::Shoot(float Value)
 {
-	
-	if (!Value || ShootTimer < 0.09f) { return; }
+	if (!Value || ShootTimer < 0.085f || IgnoreInput) { return; }
+
 	ShootTimer = 0.f;
+
 	if (Ammo > 0) {
-		Ammo--;
+		--Ammo;
 		UWorld* World = GetWorld();
 		if (World)
 		{
@@ -434,6 +458,8 @@ void APlayerShip::Shoot(float Value)
 /** We need an init function to start the timer for the main function */
 void APlayerShip::InitReload()
 {
+	if (IgnoreInput) { return; }
+
 	if (bIsReloading)
 	{
 		PlayErrorSound();
@@ -463,6 +489,8 @@ void APlayerShip::Reload()
 
 void APlayerShip::Jump()
 {
+	if (IgnoreInput) { return; }
+
 	if (bIsJumping)
 	{
 		PlayErrorSound();
@@ -495,10 +523,10 @@ void APlayerShip::JumpEnd()
 	JumpTime = 0.f;
 }
 
+
 void APlayerShip::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (!OtherActor || OtherActor == this || !OtherComponent || OtherActor->IsA(ABullet::StaticClass())) { return; }
-	
+	if (!OtherActor || OtherActor == this || !OtherComponent || OtherActor->IsA(ABullet::StaticClass()) || IgnoreInput) { return; }
 
 	/** Check if the overlapping object is an enemy */
 	if (OtherActor->IsA(AEnemyZlorp::StaticClass()))
@@ -538,38 +566,40 @@ void APlayerShip::EscPressed()
 
 void APlayerShip::TabPressed()
 {
-	HUDContainer->IGWidget->ShowKeyGuide();
+	if (HUDContainer)
+	{
+		HUDContainer->IGWidget->ShowKeyGuide();
+	}
 }
 
 
 void APlayerShip::Die()
 {
-	if (DeathFX && DeathSound && !bHasBeenRun1)
+	if (DeathFXComponent)
 	{
-		bHasBeenRun1 = true;
-		UGameplayStatics::SpawnEmitterAttached(DeathFX, BaseMesh);
-		UGameplayStatics::PlaySound2D(GetWorld(), DeathSound, 0.65f);
+		DeathFXComponent->ResetParticles();
+		DeathFXComponent->Activate();
 	}
-}
-
-void APlayerShip::GameOver()
-{
-	bHasBeenRun2 = true;
 	if (GameOverSound)
 	{
-		UGameplayStatics::PlaySound2D(GetWorld(), GameOverSound, 2.f);
+		UGameplayStatics::PlaySound2D(GetWorld(), GameOverSound, 2.3f);
 	}
-	HUDContainer->IGWidget->ShowDeathScreen();
+	if (HUDContainer)
+	{
+		HUDContainer->IGWidget->ShowDeathScreen();
+	}
 }
 
 
-void APlayerShip::Pause() // P
+void APlayerShip::Win()
 {
-	UGameplayStatics::SetGamePaused(GetWorld(), true);
-}
-
-
-void APlayerShip::Unpause() // O
-{
-	UGameplayStatics::SetGamePaused(GetWorld(), false);
+	if (WinSound)
+	{
+		/** Game over sound just with higer pitch */
+		UGameplayStatics::PlaySound2D(GetWorld(), WinSound, 1.f);
+	}
+	if (HUDContainer)
+	{
+		HUDContainer->IGWidget->ShowWinScreen();
+	}
 }

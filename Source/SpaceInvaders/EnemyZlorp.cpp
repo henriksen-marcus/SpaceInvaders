@@ -5,10 +5,9 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "SpaceInvadersGameModeBase.h"
 
-// Sets default values
+
 AEnemyZlorp::AEnemyZlorp()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	TargetVector = FVector::ZeroVector;
 	Health = 200.f;
@@ -21,14 +20,12 @@ AEnemyZlorp::AEnemyZlorp()
 }
 
 
-// Called when the game starts or when spawned
 void AEnemyZlorp::BeginPlay()
 {
 	Super::BeginPlay();
 }
 
 
-// Called every frame
 void AEnemyZlorp::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -38,7 +35,12 @@ void AEnemyZlorp::Tick(float DeltaTime)
 	
 	float DistanceToTarget = UKismetMathLibrary::Vector_Distance(GetActorLocation(), TargetVector);
 
-	if (DistanceToTarget > 500.f)
+	if (DistanceToTarget > 50000.f)
+	{
+		/** Incase an enemy spawns outside the map or something, they will just respawn */
+		KillSelf(false);
+	}
+	else if (DistanceToTarget > 500.f)
 	{
 		SetActorRotation(FMath::RInterpTo(GetActorRotation(), TargetRotation, DeltaTime, 3.f));
 		AddActorLocalOffset(FVector(ZlorpSpeed * DeltaTime, 0.f, 0.f), true);
@@ -57,7 +59,6 @@ void AEnemyZlorp::Tick(float DeltaTime)
 }
 
 
-// Called to bind functionality to input
 void AEnemyZlorp::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -74,6 +75,7 @@ void AEnemyZlorp::AddHealth(float ChangeAmount)
 {
 	Health = FMath::Clamp(Health + ChangeAmount, 0.f, 200.f);
 	
+	/** If the enemy takes damage, play the damage effect */
 	if (ChangeAmount < 0 && DamageMaterial)
 	{
 		GetMesh()->SetMaterial(0, DamageMaterial);
@@ -91,12 +93,7 @@ void AEnemyZlorp::AddHealth(float ChangeAmount)
 			Loc.Z -= 70.f;
 			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DeathFX, Loc, GetActorRotation(), FVector(2.f));
 		}
-		/** Manage garbage and add kills to the counter in the custom gamemode */
-		ASpaceInvadersGameModeBase* GameMode = Cast<ASpaceInvadersGameModeBase>(GetWorld()->GetAuthGameMode());
-		TArray<AEnemyZlorp*> SpawnedZlropsArr = GameMode->SpawnedZlorps;
-		GameMode->SpawnedZlorps.Remove(this);
-		GameMode->AddKills();
-		this->Destroy();
+		KillSelf(true);
 	}
 }
 
@@ -106,5 +103,16 @@ void AEnemyZlorp::EndDamageEffect()
 	/** Here we need to use GetMaterial() since the mesh component on the Character class is private */
 	GetMesh()->SetMaterial(0, InitialMaterial0);
 	GetMesh()->SetMaterial(1, InitialMaterial1);
+}
+
+
+/** Manage garbage and add kills to the counter in the custom gamemode */
+void AEnemyZlorp::KillSelf(bool PlayerKill)
+{
+	ASpaceInvadersGameModeBase* GameMode = Cast<ASpaceInvadersGameModeBase>(GetWorld()->GetAuthGameMode());
+	TArray<AEnemyZlorp*> SpawnedZlropsArr = GameMode->SpawnedZlorps;
+	GameMode->SpawnedZlorps.Remove(this);
+	if (PlayerKill) { GameMode->AddKills(); }
+	this->Destroy();
 }
 

@@ -32,12 +32,6 @@ void AHUDContainer::Tick(float DeltaSeconds)
 }
 
 
-void AHUDContainer::DrawHUD()
-{
-
-}
-
-
 void AHUDContainer::UpdateIGWidget(int32 Ammo, float Health)
 {
 	if (IGWidget)

@@ -21,22 +21,26 @@ public:
 
 	void ShowKeyGuide();
 	void ShowDeathScreen();
+	void ShowWinScreen();
 
 protected:
 	virtual void NativeConstruct() override;
 
 	UPROPERTY(meta = (BindWidget))
-	UProgressBar* HealthBar;
+	UProgressBar* HealthBar{};
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* AmmoTxt;
+	UTextBlock* AmmoTxt{};
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* KillsTxt;
+	UTextBlock* KillsTxt{};
 
 	UPROPERTY(meta = (BindWidget))
-	UCanvasPanel* KeyGuideWindow;
+	UCanvasPanel* KeyGuideWindow{};
 
 	UPROPERTY(meta = (BindWidget))
-	UImage* DeathScreen;
+	UImage* DeathScreen{};
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* WinScreen{};
 };

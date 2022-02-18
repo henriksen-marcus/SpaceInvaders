@@ -15,18 +15,14 @@ class SPACEINVADERS_API AEnemyZlorp : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	AEnemyZlorp();
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:	
-	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	UPROPERTY(EditAnywhere)
@@ -53,7 +49,10 @@ private:
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
 	UMaterialInterface* DamageMaterial;
 
+	UPROPERTY()
 	UMaterialInterface* InitialMaterial0;
+
+	UPROPERTY()
 	UMaterialInterface* InitialMaterial1;
 
 	float PrevSpeed;
@@ -62,4 +61,5 @@ private:
 	float Timer;
 
 	void EndDamageEffect();
+	void KillSelf(bool PlayerKill);
 };

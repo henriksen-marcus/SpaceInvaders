@@ -17,11 +17,17 @@ ASpaceInvadersGameModeBase::ASpaceInvadersGameModeBase()
 	bGameStarted = false;
 }
 
+
 void ASpaceInvadersGameModeBase::BeginPlay()
 {
+	/** Get a pointer to the HUD and make it so the UI works */
 	HUDContainer = Cast<AHUDContainer>(GetWorld()->GetFirstPlayerController()->GetHUD());
 	GetWorld()->GetFirstPlayerController()->SetInputMode(FInputModeUIOnly());
 	GetWorld()->GetFirstPlayerController()->SetShowMouseCursor(true);
+
+	/** Get a pointer to the player */
+	AActor* TempActor = UGameplayStatics::GetActorOfClass(GetWorld(), PlayerShipBP);
+	PlayerShip = Cast<APlayerShip>(TempActor);
 }
 
 
@@ -29,14 +35,13 @@ void ASpaceInvadersGameModeBase::Tick(float DeltaSeconds)
 {
 	if (!bGameStarted) { return; }
 
-	if (WaitTime >= 0.5f)
+	/** Spawn enemies and set their target location to the player location */
+	if (WaitTime >= 0.4f)
 	{
 		WaitTime = 0.f;
-		AActor* TempActor = UGameplayStatics::GetActorOfClass(GetWorld(), PlayerShipBP);
-		APlayerShip* TempShip = Cast<APlayerShip>(TempActor);
-		if (TempShip)
+		if (PlayerShip)
 		{
-			PlayerLocation = TempShip->GetLoc();
+			PlayerLocation = PlayerShip->GetLoc();
 
 			for (int i{}; i < SpawnedZlorps.Num(); i++) 
 			{
@@ -49,13 +54,12 @@ void ASpaceInvadersGameModeBase::Tick(float DeltaSeconds)
 				}
 			}
 		}
-
-		if (SpawnedZlorps.Num() < MaxAllowedEnemies)
+		/** Enemies are not allowed to spawn if the max amount has been reached, or the amount of kills the player has left */
+		if (SpawnedZlorps.Num() < MaxAllowedEnemies && SpawnedZlorps.Num() <= 19 - Kills)
 		{
 			AEnemyZlorp* TempEnemy = GetWorld()->SpawnActor<AEnemyZlorp>(EnemyZlorpBP, GetRandomSpawnLocation(), FRotator::ZeroRotator);
 			SpawnedZlorps.Add(TempEnemy);
 		}
-		UE_LOG(LogTemp, Warning, TEXT("Zlorp: %d"), SpawnedZlorps.Num())
 	}
 	WaitTime += DeltaSeconds;
 
@@ -74,7 +78,7 @@ FVector ASpaceInvadersGameModeBase::GetRandomSpawnLocation()
 	RandomCircle.X = SpawnDistance * FMath::Cos(Theta);
 	RandomCircle.Y = SpawnDistance * FMath::Sin(Theta);
 	RandomCircle += PlayerLocation;
-	RandomCircle.Z = 284.f; // Ground height + character height
+	RandomCircle.Z = 284.f; // Ground height
 	return RandomCircle;
 }
 
@@ -83,9 +87,6 @@ void ASpaceInvadersGameModeBase::AddKills()
 {
 	if (++Kills >= 20)
 	{
-		//Game win
+		PlayerShip->GameWon = true;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Kills: %d"), Kills)
-
-
 }

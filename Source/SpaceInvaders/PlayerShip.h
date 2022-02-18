@@ -18,21 +18,16 @@ class SPACEINVADERS_API APlayerShip : public APawn
 {
 	GENERATED_BODY()
 public:
-	// Sets default values for this pawn's properties
 	APlayerShip();
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:	
-	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	// ! CUSTOM ! Hardcode key mapping
 	static void InitializeDefaultPawnInputBinding();	
 
 
@@ -40,6 +35,9 @@ public:
 	/** Returns the location of the playership */
 	UFUNCTION()
 	FVector GetLoc();
+
+	/** If true, freezes the player and prompts the HUD to display a win message */
+	bool GameWon;
 
 private:
 	UPROPERTY(EditAnywhere, Category = "PlayerMesh", meta = (AllowPrivateAccess = "true"))
@@ -76,10 +74,10 @@ private:
 	USoundBase* JumpSound;
 
 	UPROPERTY(EditAnywhere, Category = "SoundVariables")
-	USoundBase* DeathSound;
+	USoundBase* GameOverSound;
 
 	UPROPERTY(EditAnywhere, Category = "SoundVariables")
-	USoundBase* GameOverSound;
+	USoundBase* WinSound;
 
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"));
 	TSubclassOf<AActor> BulletActorToSpawn;
@@ -121,17 +119,29 @@ private:
 	UParticleSystemComponent* ThrustFX4;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UParticleSystemComponent* DeathFXComponent;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
 	UParticleSystem* ThrustFX;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
 	UParticleSystem* DeathFX;
+
+	UPROPERTY()
+	class AHUDContainer* HUDContainer{};
 	
+	UPROPERTY()
+	TArray<AActor*> Attackers;
+
+	UPROPERTY()
+	UMaterialInterface* InitialMaterial;
+
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherbodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	FVector InitialLocation;
 
-	// Player input
+	/** Player input */
 	void Roll(float Value);
 	void Pitch(float Value);
 
@@ -146,14 +156,13 @@ private:
 	void Reload();
 	void Jump();
 	void JumpEnd();
-	void ResetLocation();
 	void AddHealth(float Amount);
 	void EndDamageEffect();
 	void PlayErrorSound();
 	void EscPressed();
 	void TabPressed();
 	void Die();
-	void GameOver();
+	void Win();
 
 	bool bPitchHasInput;
 	bool bRollHasInput;
@@ -162,6 +171,7 @@ private:
 	float NextPitchPosition;
 	float NextYawPosition;
 
+	/** Used in AddActorLocalOffset() in Tick()*/
 	FVector LocalMove;
 
 	float SpeedBoost;
@@ -176,16 +186,7 @@ private:
 	float EnemyCooldownTime;
 	bool bIsJumping;
 	float JumpTime;
-	bool bIsStopped;
-	bool bHasBeenRun1;
-	bool bHasBeenRun2;
-	UMaterialInterface* InitialMaterial;
+	bool IgnoreInput;
 
-	TArray<AActor*> Attackers;
 	TArray<float> Timers;
-
-	class AHUDContainer* HUDContainer;
-
-	void Pause();
-	void Unpause();
 };

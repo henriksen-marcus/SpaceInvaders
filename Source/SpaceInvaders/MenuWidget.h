@@ -19,15 +19,20 @@ protected:
 	virtual void NativeConstruct() override;
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* PlayBtn;
+	UButton* PlayBtn{};
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* QuitBtn;
+	UButton* NoEnemiesBtn{};
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* QuitBtn{};
 
 	UFUNCTION()
 	void Play();
 
 	UFUNCTION()
-	void Quit();
+	void NoEnemies();
 
+	UFUNCTION()
+	void Quit();
 };

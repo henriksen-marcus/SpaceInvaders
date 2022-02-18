@@ -50,5 +50,6 @@ public:
 	int Kills;
 	bool bGameStarted;
 
+	class APlayerShip* PlayerShip;
 	class AHUDContainer* HUDContainer;
 };

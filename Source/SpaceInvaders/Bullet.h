@@ -20,53 +20,50 @@ class SPACEINVADERS_API ABullet : public AActor
 	GENERATED_BODY()
 	
 public:	
-	// Sets default values for this actor's properties
 	ABullet();
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:	
-	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Test", meta = (AllowPrivateAccess = "true"))
 	UProjectileMovementComponent* ProjectileComp;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		bool KillBounce = false;
+	bool KillBounce = false;
 
 private:
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		UStaticMeshComponent* BaseMesh;
+	UStaticMeshComponent* BaseMesh;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		float TimeBeforeDestroy;
+	float TimeBeforeDestroy;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		float TimeLived;
+	float TimeLived;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		float MaxBulletSpeed;
+	float MaxBulletSpeed;
 	
 	UPROPERTY(EditAnywhere, Category = "CapsuleCollision")
-		UCapsuleComponent* TriggerCapsule;
+	UCapsuleComponent* TriggerCapsule;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		USoundBase* BulletShootSound;
+	USoundBase* BulletShootSound;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		USoundBase* BulletHitSound1;
+	USoundBase* BulletHitSound1;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		USoundBase* BulletHitSound2;
+	USoundBase* BulletHitSound2;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		UParticleSystem* BulletFireFX;
+	UParticleSystem* BulletFireFX;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-		UParticleSystem* BulletHitFX;
+	UParticleSystem* BulletHitFX;
 
 	UFUNCTION()
 	void Kill();

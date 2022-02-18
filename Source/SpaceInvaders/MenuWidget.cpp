@@ -8,19 +8,23 @@ void UMenuWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
+	/** Assign functions to each button */
 	PlayBtn->OnClicked.AddUniqueDynamic(this, &UMenuWidget::Play);
+	NoEnemiesBtn->OnClicked.AddUniqueDynamic(this, &UMenuWidget::NoEnemies);
 	QuitBtn->OnClicked.AddUniqueDynamic(this, &UMenuWidget::Quit);
 }
 
 void UMenuWidget::Play()
 {
-	if (this)
+	/** Hide menu from player's viewport */
+	if (GetWorld())
 	{
 		GetWorld()->GetFirstPlayerController()->SetInputMode(FInputModeGameOnly());
 		GetWorld()->GetFirstPlayerController()->SetShowMouseCursor(false);
 		this->RemoveFromViewport();
 	}
 	
+	/** Show the in-game HUD and start the game */
 	AHUDContainer* HUDContainer = Cast<AHUDContainer>(GetWorld()->GetFirstPlayerController()->GetHUD());
 	if (HUDContainer)
 	{
@@ -33,6 +37,26 @@ void UMenuWidget::Play()
 		}
 	}
 }
+
+
+void UMenuWidget::NoEnemies()
+{
+	/** Just remove from viewport without allowing GameModeBase to spawn enemies */
+	if (GetWorld())
+	{
+		GetWorld()->GetFirstPlayerController()->SetInputMode(FInputModeGameOnly());
+		GetWorld()->GetFirstPlayerController()->SetShowMouseCursor(false);
+		this->RemoveFromViewport();
+	}
+
+	/** Show the in-game HUD */
+	AHUDContainer* HUDContainer = Cast<AHUDContainer>(GetWorld()->GetFirstPlayerController()->GetHUD());
+	if (HUDContainer)
+	{
+		HUDContainer->ShowIGWidget();
+	}
+}
+
 
 void UMenuWidget::Quit()
 {
