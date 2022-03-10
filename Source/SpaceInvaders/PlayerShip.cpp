@@ -20,8 +20,9 @@ APlayerShip::APlayerShip()
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	SceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootReplacement"));
-	SetRootComponent(SceneComponent);
+	RtRpl = CreateDefaultSubobject<UBoxComponent>(TEXT("RootReplacement"));
+	SetRootComponent(RtRpl);
+	RtRpl->SetSimulatePhysics(true);
 
 	/** Spaceship mesh */
 	BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShipMesh"));
@@ -43,8 +44,6 @@ APlayerShip::APlayerShip()
 	//BaseMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	//BaseMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
 	BaseMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerShip::OnOverlapBegin);
-	BaseMesh->SetSimulatePhysics(true);
-	BaseMesh->SetEnableGravity(false);
 
 	MaxAmmo = 40;
 	Ammo = MaxAmmo;
@@ -162,6 +161,8 @@ void APlayerShip::BeginPlay()
 	{
 		HUDContainer->UpdateIGWidget(Ammo, Health);
 	}
+
+	Force.Z = RtRpl->GetMass() * 100 * 9.80665;
 }
 
 
@@ -171,22 +172,23 @@ void APlayerShip::Tick(float DeltaTime)
 
 	ShootTimer += DeltaTime;
 
-	/** Ship movement */ // REMOVED: PHYSICS BASED MOVEMENT TAKES OVER
-	//AddActorLocalOffset(LocalMove * DeltaTime * 110.f, true);
-	///** Constant Z location and jumping functionality */
-	//FVector Loc = GetActorLocation();
-	//if (bIsJumping && JumpCurve)
-	//{
-	//	Loc.Z = InitialLocation.Z + JumpCurve->GetFloatValue(JumpTime) * 1500;
-	//	JumpTime += DeltaTime;
-	//}
-	//else {
-	//	Loc.Z = InitialLocation.Z;
-	//}
-	//SetActorLocation(Loc, true);
+	/** Ship movement - Changed to physics based */ 
+	FVector CombinedVectors{};
 
-	Force.Y *= 10000;
-	BaseMesh->AddForce(Force);
+	if (Force.X != 0) 
+	{
+		CombinedVectors += Force.X * GetActorForwardVector() * 50000000;
+	}
+
+	if (Force.Y != 0)
+	{
+		CombinedVectors += Force.Y * GetActorRightVector() * 50000000;
+	}
+	CombinedVectors.Z = Force.Z;
+
+	//RtRpl->AddForce(FVector(0.f, 0.f, Force.Z));
+	RtRpl->AddForce(CombinedVectors);
+	RtRpl->SetPhysicsAngularVelocity(FVector::ZeroVector);
 
 	SetActorRotation(FRotator(NextPitchPosition, NextYawPosition, NextRollPosition));
 
@@ -243,7 +245,7 @@ void APlayerShip::Tick(float DeltaTime)
 	/** Update in-game HUD */
 	if (HUDContainer)
 	{
-		HUDContainer->UpdateIGWidget(Ammo, Health);
+		HUDContainer->IGWidget->Update(Ammo, Health);
 	}
 }
 
@@ -317,8 +319,7 @@ void APlayerShip::Pitch(float Value)
 	// Interpolate rotation towards target
 	NextPitchPosition = FMath::FInterpTo(GetActorRotation().Pitch, TargetPitch, GetWorld()->GetDeltaSeconds(), 6.0f);
 
-	float TargetXSpeed = bPitchHasInput ? (Value * 40.f * SpeedBoost) : 0.f;
-	LocalMove.X = FMath::FInterpTo(LocalMove.X, TargetXSpeed, GetWorld()->GetDeltaSeconds(), 2.f);
+	Force.X = bPitchHasInput ? Value : 0.f;
 }
 
 
@@ -333,10 +334,7 @@ void APlayerShip::Roll(float Value)
 	// Interpolate rotation towards target
 	NextRollPosition = FMath::FInterpTo(GetActorRotation().Roll, TargetRoll, GetWorld()->GetDeltaSeconds(), 7.5f);
 
-	Force.Y = bRollHasInput ? Value : 0.f;
-
-	float TargetYSpeed = bRollHasInput ? (Value * -30.f) : 0.f;
-	LocalMove.Y = FMath::FInterpTo(LocalMove.Y, TargetYSpeed, GetWorld()->GetDeltaSeconds(), 2.f);
+	Force.Y = bRollHasInput ? Value * (-1.f) : 0.f;
 }
 
 
@@ -455,8 +453,8 @@ void APlayerShip::Shoot(float Value)
 			FRotator Rot = GetActorRotation();
 			Rot.Pitch = 0;
 			// Bullet will spawn at the end of the barrel under the ship
-			World->SpawnActor<AActor>(BulletActorToSpawn, BulletSpawnPoint->GetComponentLocation(), Rot);
-			LocalMove.X -= 0.8f;
+			World->SpawnActor<AActor>(BulletActorToSpawn, FVector::ZeroVector, Rot); //BulletSpawnPoint->GetComponentLocation()
+			//RtRpl->AddImpulse(FVector(100000.f, 0.f, 0.f));
 		}
 	}
 	else if (GunClickSound) 

@@ -24,22 +24,22 @@ ABullet::ABullet()
 	TimeLived = 0.f;
 	TimeBeforeDestroy = 5.f;
 
-	ProjectileComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileComp"));
+	/*ProjectileComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileComp"));
 	ProjectileComp->ProjectileGravityScale = 0.3f;
 	ProjectileComp->InitialSpeed = MaxBulletSpeed;
 	ProjectileComp->MaxSpeed = MaxBulletSpeed;
 
 	TScriptDelegate<FWeakObjectPtr> StopDelegate;
 	StopDelegate.BindUFunction(this, FName("Kill"));
-	ProjectileComp->OnProjectileStop.Add(StopDelegate);
+	ProjectileComp->OnProjectileStop.Add(StopDelegate);*/
 
-	TriggerCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("TriggerCapsule"));
+	/*TriggerCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("TriggerCapsule"));
 	TriggerCapsule->InitCapsuleSize(2.f, 8.2f);
 	TriggerCapsule->SetRelativeRotation(FRotator(90.f, 0.f, 0.f));
 	TriggerCapsule->SetRelativeLocation(FVector(2.8f, 0.f, 0.f));
 	TriggerCapsule->SetCollisionProfileName(TEXT("CapsuleTrigger"));
 	TriggerCapsule->SetupAttachment(GetRootComponent());
-	TriggerCapsule->OnComponentBeginOverlap.AddDynamic(this, &ABullet::OnOverlapBegin);
+	TriggerCapsule->OnComponentBeginOverlap.AddDynamic(this, &ABullet::OnOverlapBegin);*/
 }
 
 
@@ -70,7 +70,7 @@ void ABullet::Tick(float DeltaTime)
 	SetActorLocation(NewLocation);*/
 
 	TimeLived += DeltaTime;
-	if (TimeLived > TimeBeforeDestroy) { this->Destroy(); }
+	//if (TimeLived > TimeBeforeDestroy) { this->Destroy(); }
 }
 
 
@@ -98,10 +98,10 @@ void ABullet::OnOverlapBegin (
 	*/
 	if (!OtherActor || OtherActor == this || !OtherComponent  || this->GetClass() == OtherActor->GetClass() || OtherActor->IsA(APlayerShip::StaticClass())) { return; }
 	// Uncomment to see overlap information
-	/*FString TACS = this->GetClass()->GetFName().ToString();
+	FString TACS = this->GetClass()->GetFName().ToString();
 	FString OACS = OtherActor->GetClass()->GetFName().ToString();
 	UE_LOG(LogTemp, Warning, TEXT("%s overlapped with %s\nThis class: %s\nOther Class: %s"), *this->GetFName().ToString(), *OtherActor->GetFName().ToString(), *TACS, *OACS);
-	UE_LOG(LogTemp, Warning, TEXT("Class of other actor: %s\nClass of PlayShip %s"), *OACS, *APlayerShip::StaticClass()->GetFName().ToString())*/
+	UE_LOG(LogTemp, Warning, TEXT("Class of other actor: %s\nClass of PlayShip %s"), *OACS, *APlayerShip::StaticClass()->GetFName().ToString())
 
 	if (OtherActor->IsA(AEnemyZlorp::StaticClass()))
 	{
@@ -130,6 +130,6 @@ void ABullet::OnOverlapBegin (
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BulletHitFX, GetActorLocation(), FRotator::ZeroRotator, FVector(0.4f));
 	}
-	this->Destroy();
+	//this->Destroy();
 }
 

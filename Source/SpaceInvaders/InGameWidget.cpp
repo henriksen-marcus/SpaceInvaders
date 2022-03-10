@@ -31,7 +31,7 @@ void UInGameWidget::Update(int32 KillCount)
 }
 
 
-void UInGameWidget::Update(int32 Ammo, float Health)
+void UInGameWidget::Update(int Ammo, float Health)
 {
 	if (IsValid(AmmoTxt) && IsValid(HealthBar))
 	{

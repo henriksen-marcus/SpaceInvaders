@@ -41,10 +41,10 @@ public:
 	bool GameWon;
 
 private:
-	UPROPERTY(EditAnywhere, Category = "PlayerMesh", meta = (AllowPrivateAccess = "true"))
-	USceneComponent* SceneComponent;
+	UPROPERTY(EditAnywhere, Category = "PlayerMesh")
+	UBoxComponent* RtRpl; // Root replacement
 
-	UPROPERTY(EditAnywhere, Category = "PlayerMesh", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Category = "PlayerMesh")
 	UStaticMeshComponent* BaseMesh;
 
 	UPROPERTY(EditAnywhere, Category = "CameraVariables")

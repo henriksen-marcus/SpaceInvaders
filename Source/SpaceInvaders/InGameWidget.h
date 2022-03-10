@@ -17,7 +17,7 @@ class SPACEINVADERS_API UInGameWidget : public UUserWidget
 
 public:
 	void Update(int32 KillCount);
-	void Update(int32 Ammo, float Health);
+	void Update(int Ammo, float Health);
 
 	void ShowKeyGuide();
 	void ShowDeathScreen();
