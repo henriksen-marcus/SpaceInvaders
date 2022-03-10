@@ -20,6 +20,9 @@ APlayerShip::APlayerShip()
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	SceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootReplacement"));
+	SetRootComponent(SceneComponent);
+
 	/** Spaceship mesh */
 	BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShipMesh"));
 	ConstructorHelpers::FObjectFinder<UStaticMesh> SpaceshipRef(TEXT("StaticMesh'/Game/Meshes/Spaceship/spaceship.spaceship'"));
@@ -33,13 +36,15 @@ APlayerShip::APlayerShip()
 	}
 
 	BaseMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
-	SetRootComponent(BaseMesh);
+	BaseMesh->SetupAttachment(GetRootComponent());
 
 	/** I can actually just use the mesh as a collision detector, as I have assigned 
 	simplified 26DOP collision to it in the mesh editor */
-	BaseMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
-	BaseMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+	//BaseMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	//BaseMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
 	BaseMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerShip::OnOverlapBegin);
+	BaseMesh->SetSimulatePhysics(true);
+	BaseMesh->SetEnableGravity(false);
 
 	MaxAmmo = 40;
 	Ammo = MaxAmmo;
@@ -166,19 +171,22 @@ void APlayerShip::Tick(float DeltaTime)
 
 	ShootTimer += DeltaTime;
 
-	/** Ship movement */
-	AddActorLocalOffset(LocalMove * DeltaTime * 110.f, true);
-	/** Constant Z location and jumping functionality */
-	FVector Loc = GetActorLocation();
-	if (bIsJumping && JumpCurve)
-	{
-		Loc.Z = InitialLocation.Z + JumpCurve->GetFloatValue(JumpTime) * 1500;
-		JumpTime += DeltaTime;
-	}
-	else {
-		Loc.Z = InitialLocation.Z;
-	}
-	SetActorLocation(Loc, true);
+	/** Ship movement */ // REMOVED: PHYSICS BASED MOVEMENT TAKES OVER
+	//AddActorLocalOffset(LocalMove * DeltaTime * 110.f, true);
+	///** Constant Z location and jumping functionality */
+	//FVector Loc = GetActorLocation();
+	//if (bIsJumping && JumpCurve)
+	//{
+	//	Loc.Z = InitialLocation.Z + JumpCurve->GetFloatValue(JumpTime) * 1500;
+	//	JumpTime += DeltaTime;
+	//}
+	//else {
+	//	Loc.Z = InitialLocation.Z;
+	//}
+	//SetActorLocation(Loc, true);
+
+	Force.Y *= 10000;
+	BaseMesh->AddForce(Force);
 
 	SetActorRotation(FRotator(NextPitchPosition, NextYawPosition, NextRollPosition));
 
@@ -308,6 +316,7 @@ void APlayerShip::Pitch(float Value)
 
 	// Interpolate rotation towards target
 	NextPitchPosition = FMath::FInterpTo(GetActorRotation().Pitch, TargetPitch, GetWorld()->GetDeltaSeconds(), 6.0f);
+
 	float TargetXSpeed = bPitchHasInput ? (Value * 40.f * SpeedBoost) : 0.f;
 	LocalMove.X = FMath::FInterpTo(LocalMove.X, TargetXSpeed, GetWorld()->GetDeltaSeconds(), 2.f);
 }
@@ -323,6 +332,8 @@ void APlayerShip::Roll(float Value)
 	float TargetRoll = bRollHasInput ? Value > 0 ? -30.0f : 30.0f : 0.f;
 	// Interpolate rotation towards target
 	NextRollPosition = FMath::FInterpTo(GetActorRotation().Roll, TargetRoll, GetWorld()->GetDeltaSeconds(), 7.5f);
+
+	Force.Y = bRollHasInput ? Value : 0.f;
 
 	float TargetYSpeed = bRollHasInput ? (Value * -30.f) : 0.f;
 	LocalMove.Y = FMath::FInterpTo(LocalMove.Y, TargetYSpeed, GetWorld()->GetDeltaSeconds(), 2.f);

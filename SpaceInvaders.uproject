@@ -18,6 +18,10 @@
 		{
 			"Name": "AssetSearch",
 			"Enabled": true
+		},
+		{
+			"Name": "GPULightmass",
+			"Enabled": true
 		}
 	]
 }

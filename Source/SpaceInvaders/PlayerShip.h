@@ -41,6 +41,9 @@ public:
 
 private:
 	UPROPERTY(EditAnywhere, Category = "PlayerMesh", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* SceneComponent;
+
+	UPROPERTY(EditAnywhere, Category = "PlayerMesh", meta = (AllowPrivateAccess = "true"))
 	UStaticMeshComponent* BaseMesh;
 
 	UPROPERTY(EditAnywhere, Category = "CameraVariables")
@@ -189,4 +192,6 @@ private:
 	bool IgnoreInput;
 
 	TArray<float> Timers;
+
+	FVector Force = FVector::ZeroVector;
 };
