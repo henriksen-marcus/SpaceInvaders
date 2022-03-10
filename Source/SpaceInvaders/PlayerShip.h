@@ -32,6 +32,7 @@ public:
 
 
 public:
+	//Test
 	/** Returns the location of the playership */
 	UFUNCTION()
 	FVector GetLoc();
