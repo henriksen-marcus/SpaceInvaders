@@ -173,24 +173,23 @@ void APlayerShip::Tick(float DeltaTime)
 	ShootTimer += DeltaTime;
 
 	/** Ship movement - Changed to physics based */ 
-	FVector CombinedVectors{};
-
-	if (Force.X != 0) 
-	{
-		CombinedVectors += Force.X * GetActorForwardVector() * 50000000;
-	}
-
-	if (Force.Y != 0)
-	{
-		CombinedVectors += Force.Y * GetActorRightVector() * 50000000;
-	}
+	FVector CombinedVectors = FVector::ZeroVector;
+	CombinedVectors += Force.X * GetActorForwardVector();
+	CombinedVectors += Force.Y * GetActorRightVector();
+	CombinedVectors *= 50000000;
 	CombinedVectors.Z = Force.Z;
-
-	//RtRpl->AddForce(FVector(0.f, 0.f, Force.Z));
 	RtRpl->AddForce(CombinedVectors);
-	RtRpl->SetPhysicsAngularVelocity(FVector::ZeroVector);
+	//RtRpl->SetPhysicsLinearVelocity(RtRpl->GetPhysicsLinearVelocity() * 0.99);
+	RtRpl->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 
+	FVector Resistance = FVector::ZeroVector;
+	Resistance -= GetActorForwardVector();
+	Resistance -= GetActorRightVector();
+	RtRpl->AddForce(Resistance);
+
+	//BaseMesh->SetRelativeRotation(FRotator(NextPitchPosition, 0.f, NextRollPosition));
 	SetActorRotation(FRotator(NextPitchPosition, NextYawPosition, NextRollPosition));
+
 
 	/** Springarm rotation */
 	FRotator SpringArmRotation = SpringArm->GetRelativeRotation();
@@ -453,7 +452,7 @@ void APlayerShip::Shoot(float Value)
 			FRotator Rot = GetActorRotation();
 			Rot.Pitch = 0;
 			// Bullet will spawn at the end of the barrel under the ship
-			World->SpawnActor<AActor>(BulletActorToSpawn, FVector::ZeroVector, Rot); //BulletSpawnPoint->GetComponentLocation()
+			World->SpawnActor<AActor>(BulletActorToSpawn, BulletSpawnPoint->GetComponentLocation(), Rot);
 			//RtRpl->AddImpulse(FVector(100000.f, 0.f, 0.f));
 		}
 	}

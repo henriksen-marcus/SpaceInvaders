@@ -14,7 +14,7 @@ ASpaceInvadersGameModeBase::ASpaceInvadersGameModeBase()
 	Kills = 0;
 	KillsToWin = 20;
 	MaxAllowedEnemies = 5;
-	bGameStarted = false;
+	bGameStarted = true;
 }
 
 
@@ -22,12 +22,24 @@ void ASpaceInvadersGameModeBase::BeginPlay()
 {
 	/** Get a pointer to the HUD and make it so the UI works */
 	HUDContainer = Cast<AHUDContainer>(GetWorld()->GetFirstPlayerController()->GetHUD());
-	GetWorld()->GetFirstPlayerController()->SetInputMode(FInputModeUIOnly());
-	GetWorld()->GetFirstPlayerController()->SetShowMouseCursor(true);
-
+	if (HUDContainer)
+	{
+		GetWorld()->GetFirstPlayerController()->SetInputMode(FInputModeUIOnly());
+		GetWorld()->GetFirstPlayerController()->SetShowMouseCursor(true);
+	}
+	
 	/** Get a pointer to the player */
+	//APlayerShip* TempShip = Cast<APlayerShip>(GetWorld()->GetFirstPlayerController());
 	AActor* TempActor = UGameplayStatics::GetActorOfClass(GetWorld(), PlayerShipBP);
-	PlayerShip = Cast<APlayerShip>(TempActor);
+	if (TempActor)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Got TempShip!"))
+		PlayerShip = Cast<APlayerShip>(TempActor);
+	}
+	else {
+		UE_LOG(LogTemp, Warning, TEXT("Could not get TempShip!"))
+	}
+	
 }
 
 
