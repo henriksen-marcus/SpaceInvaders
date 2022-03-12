@@ -242,9 +242,14 @@ void APlayerShip::Tick(float DeltaTime)
 	}
 
 	/** Update in-game HUD */
-	if (HUDContainer && Cast<ASpaceInvadersGameModeBase>(GetWorld()->GetAuthGameMode())->bGameStarted)
+	ASpaceInvadersGameModeBase* TempPtr = Cast<ASpaceInvadersGameModeBase>(GetWorld()->GetAuthGameMode());
+
+	if (HUDContainer && TempPtr)
 	{
-		HUDContainer->UpdateIGWidget(Ammo, Health);
+		if (TempPtr->bGameStarted)
+		{
+			HUDContainer->UpdateIGWidget(Ammo, Health);
+		}
 	}
 }
 
