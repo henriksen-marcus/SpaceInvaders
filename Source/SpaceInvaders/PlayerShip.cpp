@@ -38,11 +38,6 @@ APlayerShip::APlayerShip()
 
 	BaseMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 	BaseMesh->SetupAttachment(GetRootComponent());
-
-	/** I can actually just use the mesh as a collision detector, as I have assigned 
-	simplified 26DOP collision to it in the mesh editor */
-	//BaseMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
-	//BaseMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
 	BaseMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerShip::OnOverlapBegin);
 
 	MaxAmmo = 40;
@@ -57,14 +52,17 @@ APlayerShip::APlayerShip()
 	bIsReloading = false;
 	bIsDashing = false;
 	bIsJumping = false;
-	JumpTime = 0.f;
 	EnemyCooldownTime = 1.f;
 	IgnoreInput = false;
 	GameWon = false;
 
-	BulletSpawnPoint = CreateDefaultSubobject<UArrowComponent>(TEXT("BulletSpawnPoint"));
-	BulletSpawnPoint->SetupAttachment(GetRootComponent());
-	BulletSpawnPoint->SetRelativeLocation(FVector(500.f, 0.f, -170.f));
+	BulletSpawnPoint1 = CreateDefaultSubobject<UArrowComponent>(TEXT("BulletSpawnPoint1"));
+	BulletSpawnPoint1->SetupAttachment(GetRootComponent());
+	BulletSpawnPoint1->SetRelativeLocation(FVector(500.f, -50.f, -170.f));
+
+	BulletSpawnPoint2 = CreateDefaultSubobject<UArrowComponent>(TEXT("BulletSpawnPoint2"));
+	BulletSpawnPoint2->SetupAttachment(GetRootComponent());
+	BulletSpawnPoint2->SetRelativeLocation(FVector(500.f, 50.f, -170.f));
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetRelativeRotation(FRotator(-30.f, 0.f, 0.f));
@@ -176,20 +174,19 @@ void APlayerShip::Tick(float DeltaTime)
 	FVector CombinedVectors = FVector::ZeroVector;
 	CombinedVectors += Force.X * GetActorForwardVector();
 	CombinedVectors += Force.Y * GetActorRightVector();
-	CombinedVectors *= 50000000;
-	CombinedVectors.Z = Force.Z;
+	CombinedVectors *= 20000000 * SpeedBoost;
+	CombinedVectors.Z = Force.Z * JumpCurve->GetFloatValue(GetActorLocation().Z);
+
 	RtRpl->AddForce(CombinedVectors);
-	//RtRpl->SetPhysicsLinearVelocity(RtRpl->GetPhysicsLinearVelocity() * 0.99);
 	RtRpl->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 
 	FVector Resistance = FVector::ZeroVector;
-	Resistance -= GetActorForwardVector();
-	Resistance -= GetActorRightVector();
+	Resistance = RtRpl->GetPhysicsLinearVelocity() * -1000.f;
+	Resistance.Z = 0;
 	RtRpl->AddForce(Resistance);
 
 	//BaseMesh->SetRelativeRotation(FRotator(NextPitchPosition, 0.f, NextRollPosition));
 	SetActorRotation(FRotator(NextPitchPosition, NextYawPosition, NextRollPosition));
-
 
 	/** Springarm rotation */
 	FRotator SpringArmRotation = SpringArm->GetRelativeRotation();
@@ -197,21 +194,23 @@ void APlayerShip::Tick(float DeltaTime)
 	NewRot.Pitch = SpringArmRotation.Pitch;
 	NewRot.Roll = 0;
 	SpringArm->SetWorldRotation(NewRot);
-
+	UE_LOG(LogTemp, Warning, TEXT("Tick"), Health)
 	/** Game has ended if one of these are true */
 	if (IgnoreInput || GameWon)
 	{
 		IgnoreInput = true;
 
-		if (!Health)
+		if (!Health || Health == 0.f)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("Game ended! Health: %f"), Health)
+				Die();
 			/** Run only once */
-			static bool HasDied;
+			/*static bool HasDied;
 			if (!HasDied)
 			{
 				Die();
 				HasDied = true;
-			}
+			}*/
 		}
 		else 
 		{
@@ -225,7 +224,8 @@ void APlayerShip::Tick(float DeltaTime)
 		}
 		
 		/** Since input is blocked, interp movement to zero */
-		LocalMove = FMath::VInterpTo(LocalMove, FVector::ZeroVector, DeltaTime, 3.f);
+		Force.X = 0;
+		Force.Y = 0;
 		NextPitchPosition = FMath::FInterpTo(NextPitchPosition, 0.f, DeltaTime, 1.f);
 		NextRollPosition = FMath::FInterpTo(NextRollPosition, 0.f, DeltaTime, 1.f);
 	}
@@ -242,9 +242,9 @@ void APlayerShip::Tick(float DeltaTime)
 	}
 
 	/** Update in-game HUD */
-	if (HUDContainer)
+	if (HUDContainer && Cast<ASpaceInvadersGameModeBase>(GetWorld()->GetAuthGameMode())->bGameStarted)
 	{
-		HUDContainer->IGWidget->Update(Ammo, Health);
+		HUDContainer->UpdateIGWidget(Ammo, Health);
 	}
 }
 
@@ -365,9 +365,12 @@ void APlayerShip::Dash()
 		PlayErrorSound();
 		return;
 	}
-
+	
 	SpeedBoost = MaxSpeedBoost;
 	bIsDashing = true;
+
+	FTimerHandle handle;
+	GetWorld()->GetTimerManager().SetTimer(handle, this, &APlayerShip::ResetDash, DashTimer, false);
 
 	if (DashSound)
 	{
@@ -375,9 +378,6 @@ void APlayerShip::Dash()
 	}
 	if (ThrustFX)
 	{
-		// Old, keeping in case I need it
-		/*UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ThrustFX, Loc, Rot, FVector(0.4f));
-		UGameplayStatics::SpawnEmitterAttached(ThrustFX, ThrustLocations[i], FName(EName::NAME_None), Loc, Rot, FVector(0.5f));*/
 		ThrustFX1->ResetParticles();
 		ThrustFX2->ResetParticles();
 		ThrustFX3->ResetParticles();
@@ -388,9 +388,6 @@ void APlayerShip::Dash()
 		ThrustFX3->Activate();
 		ThrustFX4->Activate();
 	}
-
-	FTimerHandle handle;
-	GetWorld()->GetTimerManager().SetTimer(handle, this, &APlayerShip::ResetDash, DashTimer, false);
 }
 
 
@@ -418,6 +415,7 @@ void APlayerShip::AddHealth(float Amount)
 	if (!Health)
 	{
 		IgnoreInput = true;
+		Health = 0.f;
 	}
 }
 
@@ -445,15 +443,16 @@ void APlayerShip::Shoot(float Value)
 	ShootTimer = 0.f;
 
 	if (Ammo > 0) {
-		--Ammo;
+		Ammo -= 2;
 		UWorld* World = GetWorld();
 		if (World)
 		{
 			FRotator Rot = GetActorRotation();
 			Rot.Pitch = 0;
-			// Bullet will spawn at the end of the barrel under the ship
-			World->SpawnActor<AActor>(BulletActorToSpawn, BulletSpawnPoint->GetComponentLocation(), Rot);
-			//RtRpl->AddImpulse(FVector(100000.f, 0.f, 0.f));
+			// Bullet will spawn at the end of the barrel under the ship - added dual barrel support
+			World->SpawnActor<AActor>(BulletActorToSpawn, BulletSpawnPoint1->GetComponentLocation(), Rot);
+			World->SpawnActor<AActor>(BulletActorToSpawn, BulletSpawnPoint2->GetComponentLocation(), Rot);
+			RtRpl->AddImpulse(FVector(100000.f, 0.f, 0.f));
 		}
 	}
 	else if (GunClickSound) 
@@ -505,10 +504,13 @@ void APlayerShip::Jump()
 		return;
 	}
 
+	//bIsJumping = true;
+	RtRpl->AddImpulse(FVector(0.f, 0.f, 10000000.f));
 	bIsJumping = true;
 	UGameplayStatics::PlaySound2D(GetWorld(), JumpSound, 0.5f);
+
 	FTimerHandle handle;
-	GetWorld()->GetTimerManager().SetTimer(handle, this, &APlayerShip::JumpEnd, 2.f, false);
+	GetWorld()->GetTimerManager().SetTimer(handle, this, &APlayerShip::JumpEnd, 4.f, false);
 
 	if (ThrustFX)
 	{
@@ -528,7 +530,6 @@ void APlayerShip::Jump()
 void APlayerShip::JumpEnd()
 {
 	bIsJumping = false;
-	JumpTime = 0.f;
 }
 
 
@@ -567,7 +568,6 @@ FVector APlayerShip::GetLoc()
 
 void APlayerShip::EscPressed()
 {
-	//UKismetSystemLibrary::QuitGame(GetWorld(), GetWorld()->GetFirstPlayerController(), EQuitPreference::Quit, false);
 	FGenericPlatformMisc::RequestExit(false);
 }
 
@@ -583,6 +583,11 @@ void APlayerShip::TabPressed()
 
 void APlayerShip::Die()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Died"))
+	if (temp == true)
+	{
+		return;
+	}
 	if (DeathFXComponent)
 	{
 		DeathFXComponent->ResetParticles();
@@ -596,6 +601,7 @@ void APlayerShip::Die()
 	{
 		HUDContainer->IGWidget->ShowDeathScreen();
 	}
+	temp = true;
 }
 
 

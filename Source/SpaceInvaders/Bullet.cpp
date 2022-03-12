@@ -78,7 +78,7 @@ void ABullet::Tick(float DeltaTime)
 
 void ABullet::Kill()
 {
-	//this->Destroy();
+	this->Destroy();
 }
 
 
@@ -98,10 +98,10 @@ void ABullet::OnOverlapBegin (
 	*/
 	if (!OtherActor || OtherActor == this || !OtherComponent  || this->GetClass() == OtherActor->GetClass() || OtherActor->IsA(APlayerShip::StaticClass())) { return; }
 	// Uncomment to see overlap information
-	FString TACS = this->GetClass()->GetFName().ToString();
+	/*FString TACS = this->GetClass()->GetFName().ToString();
 	FString OACS = OtherActor->GetClass()->GetFName().ToString();
 	UE_LOG(LogTemp, Warning, TEXT("%s overlapped with %s\nThis class: %s\nOther Class: %s"), *this->GetFName().ToString(), *OtherActor->GetFName().ToString(), *TACS, *OACS);
-	UE_LOG(LogTemp, Warning, TEXT("Class of other actor: %s\nClass of PlayShip %s"), *OACS, *APlayerShip::StaticClass()->GetFName().ToString())
+	UE_LOG(LogTemp, Warning, TEXT("Class of other actor: %s\nClass of PlayShip %s"), *OACS, *APlayerShip::StaticClass()->GetFName().ToString())*/
 
 	if (OtherActor->IsA(AEnemyZlorp::StaticClass()))
 	{

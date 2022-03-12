@@ -14,7 +14,7 @@ ASpaceInvadersGameModeBase::ASpaceInvadersGameModeBase()
 	Kills = 0;
 	KillsToWin = 20;
 	MaxAllowedEnemies = 5;
-	bGameStarted = true;
+	bGameStarted = false;
 }
 
 
@@ -29,7 +29,6 @@ void ASpaceInvadersGameModeBase::BeginPlay()
 	}
 	
 	/** Get a pointer to the player */
-	//APlayerShip* TempShip = Cast<APlayerShip>(GetWorld()->GetFirstPlayerController());
 	AActor* TempActor = UGameplayStatics::GetActorOfClass(GetWorld(), PlayerShipBP);
 	if (TempActor)
 	{

@@ -14,9 +14,13 @@ void AHUDContainer::BeginPlay()
 		
 		if (MWidget)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("Found MWidget!"))
 			MWidget->AddToViewport(); // Spawn menu
 			MWidget->bIsFocusable = true;
 			MWidget->SetFocus();
+		}
+		else {
+			UE_LOG(LogTemp, Warning, TEXT("Can't find MWidget!"))
 		}
 	}
 

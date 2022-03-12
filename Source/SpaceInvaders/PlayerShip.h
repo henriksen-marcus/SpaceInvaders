@@ -54,7 +54,10 @@ private:
 	UCameraComponent* Camera;
 
 	UPROPERTY(EditAnywhere, Category = "EditableVariables")
-	UArrowComponent* BulletSpawnPoint;
+	UArrowComponent* BulletSpawnPoint1;
+
+	UPROPERTY(EditAnywhere, Category = "EditableVariables")
+	UArrowComponent* BulletSpawnPoint2;
 
 	UPROPERTY(EditAnywhere, Category = "SoundVariables")
 	USoundBase* ReloadingSound;
@@ -153,11 +156,11 @@ private:
 	void Yaw(float Value);
 
 	void Dash();
-	void ResetDash();
 	void Shoot(float Value);
 	void InitReload();
 	void PlayBulletCasingSound();
 	void Reload();
+	void ResetDash();
 	void Jump();
 	void JumpEnd();
 	void AddHealth(float Amount);
@@ -184,13 +187,13 @@ private:
 	float CurrentYaw;
 	float InitialArmLength;
 	float Health;
-	int Ammo;
+	int32 Ammo;
 	bool bIsReloading;
 	bool bIsDashing;
 	float EnemyCooldownTime;
 	bool bIsJumping;
-	float JumpTime;
 	bool IgnoreInput;
+	bool temp = false;
 
 	TArray<float> Timers;
 
