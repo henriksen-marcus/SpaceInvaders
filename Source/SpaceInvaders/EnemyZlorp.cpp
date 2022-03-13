@@ -2,9 +2,9 @@
 
 
 #include "EnemyZlorp.h"
+#include "HealthPack.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "SpaceInvadersGameModeBase.h"
-
 
 AEnemyZlorp::AEnemyZlorp()
 {
@@ -112,7 +112,23 @@ void AEnemyZlorp::KillSelf(bool PlayerKill)
 	ASpaceInvadersGameModeBase* GameMode = Cast<ASpaceInvadersGameModeBase>(GetWorld()->GetAuthGameMode());
 	TArray<AEnemyZlorp*> SpawnedZlropsArr = GameMode->SpawnedZlorps;
 	GameMode->SpawnedZlorps.Remove(this);
-	if (PlayerKill) { GameMode->AddKills(); }
+	if (PlayerKill)
+	{
+		GameMode->AddKills();
+	}
+
+
+	//Spawn Helath Pack
+	int random = 1 + (rand() % 100);
+
+	if (random <= 100) //25% chance of dropping a HealthPack
+	{
+		//Spawn - HealthPack
+		UE_LOG(LogTemp, Warning, TEXT("EnemyZlorp - Spawn HealthPack"));
+		UWorld* World = GetWorld();
+		AHealthPack* TempHealthPack = World->SpawnActor<AHealthPack>(HealthPack, GetActorLocation(), GetActorRotation());
+	}
+
 	this->Destroy();
 }
 

@@ -40,6 +40,8 @@ public:
 	/** If true, freezes the player and prompts the HUD to display a win message */
 	bool GameWon;
 
+	void AddHealth(float Amount);
+
 private:
 	UPROPERTY(EditAnywhere, Category = "PlayerMesh")
 	UBoxComponent* RtRpl; // Root replacement
@@ -163,7 +165,6 @@ private:
 	void ResetDash();
 	void Jump();
 	void JumpEnd();
-	void AddHealth(float Amount);
 	void EndDamageEffect();
 	void PlayErrorSound();
 	void EscPressed();

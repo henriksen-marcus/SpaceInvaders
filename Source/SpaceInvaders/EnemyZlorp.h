@@ -39,6 +39,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "ZlorpVariables")
 	float Health;
 
+	UPROPERTY(EditAnywhere, Category = "Spawn")
+	TSubclassOf<AActor> HealthPack;
+
 private:
 	UPROPERTY(EditAnywhere, Category = "ZlorpVariables")
 	float ZlorpSpeed;

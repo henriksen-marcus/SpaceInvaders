@@ -194,7 +194,7 @@ void APlayerShip::Tick(float DeltaTime)
 	NewRot.Pitch = SpringArmRotation.Pitch;
 	NewRot.Roll = 0;
 	SpringArm->SetWorldRotation(NewRot);
-	UE_LOG(LogTemp, Warning, TEXT("Tick"), Health)
+	//UE_LOG(LogTemp, Warning, TEXT("Tick"), Health)
 	/** Game has ended if one of these are true */
 	if (IgnoreInput || GameWon)
 	{

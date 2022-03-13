@@ -96,7 +96,15 @@ FVector ASpaceInvadersGameModeBase::GetRandomSpawnLocation()
 
 void ASpaceInvadersGameModeBase::AddKills()
 {
-	if (++Kills >= 20)
+	if (++Kills >= 10)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GameModeBase - ChangeLevel"))
+
+		FName nextLevel = FName("NextLevel");
+		UGameplayStatics::OpenLevel(GetWorld(), nextLevel);
+
+	}
+	else if (++Kills >= 20)
 	{
 		PlayerShip->GameWon = true;
 	}
