@@ -118,12 +118,10 @@ void AEnemyZlorp::KillSelf(bool PlayerKill)
 	}
 
 
-	//Spawn Helath Pack
-	int random = 1 + (rand() % 100);
-
-	if (random <= 100) //25% chance of dropping a HealthPack
+	//Spawn Health Pack
+	int RandInt = FMath::RandRange(0, 3);
+	if (!RandInt)
 	{
-		//Spawn - HealthPack
 		UE_LOG(LogTemp, Warning, TEXT("EnemyZlorp - Spawn HealthPack"));
 		UWorld* World = GetWorld();
 		AHealthPack* TempHealthPack = World->SpawnActor<AHealthPack>(HealthPack, GetActorLocation(), GetActorRotation());

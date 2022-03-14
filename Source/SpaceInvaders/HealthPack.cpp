@@ -18,10 +18,6 @@ AHealthPack::AHealthPack()
 	HealthPackSize = 10.f; //Size of the HealthPack
 	HealthAdded = 50.f; //Amount of Health added when pickup
 
-
-	//---------------
-
-
 	//Make the Collision component and set it as the "RootComponent"
 	CapsuleComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CapsuleComponent"));
 	SetRootComponent(CapsuleComponent);
@@ -29,11 +25,6 @@ AHealthPack::AHealthPack()
 	//Get Mesh from a path and make it a child of the "RootComponent"
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	MeshComponent->SetupAttachment(RootComponent);
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshComponentAsset(TEXT("StaticMesh'/Game/Meshes/HealthPack/Shape_NarrowCapsule.Shape_NarrowCapsule'"));
-	if (MeshComponentAsset.Succeeded())
-	{
-		MeshComponent->SetStaticMesh(MeshComponentAsset.Object);
-	}
 
 	//Enable the OnOverlapBegin()-function to be played, when a collision on "CapsuleComponent" takes place
 	CapsuleComponent->OnComponentBeginOverlap.AddDynamic(this, &AHealthPack::OnOverlapBegin);
