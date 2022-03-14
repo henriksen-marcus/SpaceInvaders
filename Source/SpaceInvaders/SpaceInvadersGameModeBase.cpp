@@ -66,7 +66,7 @@ void ASpaceInvadersGameModeBase::Tick(float DeltaSeconds)
 			}
 		}
 		/** Enemies are not allowed to spawn if the max amount has been reached, or the amount of kills the player has left */
-		if (SpawnedZlorps.Num() < MaxAllowedEnemies && SpawnedZlorps.Num() <= 19 - Kills)
+		if (SpawnedZlorps.Num() < MaxAllowedEnemies && SpawnedZlorps.Num() <= 9 - Kills)
 		{
 			AEnemyZlorp* TempEnemy = GetWorld()->SpawnActor<AEnemyZlorp>(EnemyZlorpBP, GetRandomSpawnLocation(), FRotator::ZeroRotator);
 			SpawnedZlorps.Add(TempEnemy);
@@ -96,16 +96,11 @@ FVector ASpaceInvadersGameModeBase::GetRandomSpawnLocation()
 
 void ASpaceInvadersGameModeBase::AddKills()
 {
-	if (++Kills >= 10)
+	Kills++;
+	if (Kills >= 10)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("GameModeBase - ChangeLevel"))
-
+		//UE_LOG(LogTemp, Warning, TEXT("GameModeBase - ChangeLevel"))
 		FName nextLevel = FName("NextLevel");
 		UGameplayStatics::OpenLevel(GetWorld(), nextLevel);
-
-	}
-	else if (++Kills >= 20)
-	{
-		PlayerShip->GameWon = true;
 	}
 }

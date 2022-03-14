@@ -21,6 +21,8 @@ public:
 
 	void ShowKeyGuide();
 	void ShowDeathScreen();
+
+	UFUNCTION(Category = "OpenFunctions")
 	void ShowWinScreen();
 
 protected:
@@ -41,6 +43,6 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UImage* DeathScreen{};
 
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(meta = (BindWidget), BlueprintReadWrite)
 	UImage* WinScreen{};
 };

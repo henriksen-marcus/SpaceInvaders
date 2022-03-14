@@ -117,7 +117,6 @@ void AEnemyZlorp::KillSelf(bool PlayerKill)
 		GameMode->AddKills();
 	}
 
-
 	//Spawn Health Pack
 	int RandInt = FMath::RandRange(0, 3);
 	if (!RandInt)

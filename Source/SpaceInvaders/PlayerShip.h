@@ -32,15 +32,20 @@ public:
 
 
 public:
-	//Test
+
+
+
+
 	/** Returns the location of the playership */
-	UFUNCTION()
+	UFUNCTION(Category = "OpenFunctions")
 	FVector GetLoc();
 
-	/** If true, freezes the player and prompts the HUD to display a win message */
-	bool GameWon;
-
+	UFUNCTION(Category = "OpenFunctions")
 	void AddHealth(float Amount);
+
+	/** If true, freezes the player and prompts the HUD to display a win message */
+	UPROPERTY(BlueprintReadWrite, Category = "OpenVariables")
+	bool GameWon;
 
 private:
 	UPROPERTY(EditAnywhere, Category = "PlayerMesh")

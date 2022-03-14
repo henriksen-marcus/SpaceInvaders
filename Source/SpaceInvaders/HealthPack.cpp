@@ -29,7 +29,7 @@ AHealthPack::AHealthPack()
 	//Enable the OnOverlapBegin()-function to be played, when a collision on "CapsuleComponent" takes place
 	CapsuleComponent->OnComponentBeginOverlap.AddDynamic(this, &AHealthPack::OnOverlapBegin);
 
-	UE_LOG(LogTemp, Warning, TEXT("HealthPack - HealthPack Spawned"));
+	//UE_LOG(LogTemp, Warning, TEXT("HealthPack - HealthPack Spawned"));
 }
 
 // Called when the game starts or when spawned
@@ -58,10 +58,10 @@ void AHealthPack::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActo
 		UGameplayStatics::PlaySound2D(GetWorld(), HealthPackSound);
 
 		this->Destroy();
-		UE_LOG(LogTemp, Warning, TEXT("HealthPack - Overlapping with spaceship, success!!"));
+		//UE_LOG(LogTemp, Warning, TEXT("HealthPack - Overlapping with spaceship, success!!"));
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("HealthPack - Overlapping with spaceship, but don't activate"));
+		//UE_LOG(LogTemp, Warning, TEXT("HealthPack - Overlapping with other"));
 	}
 }

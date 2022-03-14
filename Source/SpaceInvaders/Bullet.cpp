@@ -64,13 +64,8 @@ void ABullet::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// Using projectile movement component - keeping this as backup
-	/*FVector NewLocation = GetActorLocation();
-	NewLocation += GetActorForwardVector() * Speed * DeltaTime;
-	SetActorLocation(NewLocation);*/
-
 	TimeLived += DeltaTime;
-	//if (TimeLived > TimeBeforeDestroy) { this->Destroy(); }
+	if (TimeLived > TimeBeforeDestroy) { this->Destroy(); }
 }
 
 

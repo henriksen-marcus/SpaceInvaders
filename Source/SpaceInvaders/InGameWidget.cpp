@@ -26,7 +26,7 @@ void UInGameWidget::Update(int32 KillCount)
 {
 	if (KillsTxt)
 	{
-		KillsTxt->SetText(FText::AsNumber(FMath::Clamp(20 - KillCount, 0, 20)));
+		KillsTxt->SetText(FText::AsNumber(FMath::Clamp(10 - KillCount, 0, 10)));
 	}
 }
 
